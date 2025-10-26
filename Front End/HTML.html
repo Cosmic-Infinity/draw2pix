@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Drawing App UI</title>
+  <link rel="stylesheet" href="CSS.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+</head>
+<body>
+  <div class="top-right-buttons">
+    <button id="generate-btn" class="top-btn">
+      <i class="fa-solid fa-play"></i>
+    </button>
+    <button id="download-btn" class="top-btn">
+      <i class="fa-solid fa-download"></i>
+    </button>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <button id="pen-btn" class="sidebar-btn">
+        <i class="fa-solid fa-pen"></i>
+      </button>
+      <button id="eraser-btn" class="sidebar-btn">
+        <i class="fa-solid fa-eraser"></i>
+      </button>
+      <div class="slider-container">
+        <input type="range" min="2" max="30" value="6" class="slider" id="pen-size">
+      </div>
+      <button id="undo-btn" class="sidebar-btn">
+        <i class="fa-solid fa-rotate-left"></i>
+      </button>
+      <button id="redo-btn" class="sidebar-btn">
+        <i class="fa-solid fa-rotate-right"></i>
+      </button>
+      <button id="reset-btn" class="sidebar-btn">
+        <i class="fa-solid fa-trash"></i>
+      </button>
+    </div>
+
+    <div class="canvas-wrapper">
+      <div class="panel-text">DRAW HERE</div>
+      <canvas id="draw-canvas" width="256" height="256"></canvas>
+    </div>
+
+    <div class="right-panel">
+      <div class="image-grid-container" id="image-grid-container"></div>
+    </div>
+  </div>
+	
+	<div class="image-overlay" id="image-overlay">
+	  <span class="close-btn" id="close-overlay">&times;</span>
+	  <img id="overlay-img" src="" alt="Enlarged Image">
+	</div>
+
+
+  <script src="app.js"></script>
+</body>
+</html>
