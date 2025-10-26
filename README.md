@@ -206,3 +206,117 @@ This is an academic project. For questions or suggestions:
 
 ---
 
+## 👥 Team
+
+<div align="center">
+
+This project was made in collaboration of:
+
+<table>
+<tr>
+<td align="center" width="33%">
+<a href="https://github.com/Cosmic-Infinity">
+<img src="https://github.com/Cosmic-Infinity.png" width="100px" style="border-radius: 50%; border: 3px solid #667eea;" alt="Shubham"/>
+</a>
+<br />
+<a href="https://github.com/Cosmic-Infinity"><b>Shubham</b></a>
+<br />
+<sub>🎓 Model Training<br/>🏗️ System Architecture<br/>📊 Dataset Curation</sub>
+</td>
+<td align="center" width="33%">
+<a href="https://github.com/Sourasamanta">
+<img src="https://github.com/Sourasamanta.png" width="100px" style="border-radius: 50%; border: 3px solid #764ba2;" alt="Sourajit"/>
+</a>
+<br />
+<a href="https://github.com/Sourasamanta"><b>Sourajit</b></a>
+<br />
+<sub>💻 Web Application<br/>🎨 Frontend Design<br/>📊 Dataset Curation</sub>
+</td>
+<td align="center" width="33%">
+<a href="https://github.com/Tanmandal">
+<img src="https://github.com/Tanmandal.png" width="100px" style="border-radius: 50%; border: 3px solid #9333ea;" alt="Tanmay"/>
+</a>
+<br />
+<a href="https://github.com/Tanmandal"><b>Tanmay</b></a>
+<br />
+<sub>🕷️ Web Scraping<br/>📊 Dataset Curation</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<a href="https://github.com/Shiv14Shivam">
+<img src="https://github.com/Shiv14Shivam.png" width="100px" style="border-radius: 50%; border: 3px solid #ec4899;" alt="Shivam"/>
+</a>
+<br />
+<a href="https://github.com/Shiv14Shivam"><b>Shivam</b></a>
+<br />
+<sub>📊 Dataset Curation</sub>
+</td>
+<td align="center" width="33%">
+<a href="https://github.com/alokkbhardwaj">
+<img src="https://github.com/alokkbhardwaj.png" width="100px" style="border-radius: 50%; border: 3px solid #f59e0b;" alt="Alok"/>
+</a>
+<br />
+<a href="https://github.com/alokkbhardwaj"><b>Alok</b></a>
+<br />
+<sub>📊 Dataset Curation</sub>
+</td>
+<td align="center" width="33%">
+<a href="https://github.com/Snigdha7595">
+<img src="https://github.com/Snigdha7595.png" width="100px" style="border-radius: 50%; border: 3px solid #06b6d4;" alt="Snigdha"/>
+</a>
+<br />
+<a href="https://github.com/Snigdha7595"><b>Snigdha</b></a>
+<br />
+<sub>📊 Dataset Curation</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<a href="https://github.com/upasana2202">
+<img src="https://github.com/upasana2202.png" width="100px" style="border-radius: 50%; border: 3px solid #84cc16;" alt="Upasana"/>
+</a>
+<br />
+<a href="https://github.com/upasana2202"><b>Upasana</b></a>
+<br />
+<sub>📊 Dataset Curation</sub>
+</td>
+<td align="center" width="33%">
+<a href="https://github.com/urshita">
+<img src="https://github.com/urshita.png" width="100px" style="border-radius: 50%; border: 3px solid #f97316;" alt="Urshita"/>
+</a>
+<br />
+<a href="https://github.com/urshita"><b>Urshita</b></a>
+<br />
+<sub>📊 Dataset Curation</sub>
+</td>
+<td align="center" width="33%">
+<a href="https://github.com/ankit9">
+<img src="https://github.com/ankit9.png" width="100px" style="border-radius: 50%; border: 3px solid #ef4444;" alt="Ankit"/>
+</a>
+<br />
+<a href="https://github.com/ankit9"><b>Ankit</b></a>
+<br />
+<sub>📊 Dataset Curation</sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<a href="https://github.com/abhijeet841">
+<img src="https://github.com/abhijeet841.png" width="100px" style="border-radius: 50%; border: 3px solid #8b5cf6;" alt="Abhijeet"/>
+</a>
+<br />
+<a href="https://github.com/abhijeet841"><b>Abhijeet</b></a>
+<br />
+<sub>📊 Dataset Curation</sub>
+</td>
+<td align="center" width="33%">
+</td>
+<td align="center" width="33%">
+</td>
+</tr>
+</table>
+
+</div>
+
+---
