@@ -103,7 +103,7 @@ def check_cuda():
 def main():
     """Run all checks."""
     print("="*50)
-    print("  Sketch-to-Photo Web App - Setup Verification")
+    print("  draw2pix Web App - Setup Verification")
     print("="*50)
     print()
     

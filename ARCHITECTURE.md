@@ -1,4 +1,4 @@
-# Sketch-to-Photo Web App Architecture
+# draw2pix Web App Architecture
 
 ## System Overview
 

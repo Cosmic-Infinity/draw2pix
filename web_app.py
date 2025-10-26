@@ -1,5 +1,5 @@
 """
-Flask web application for real-time sketch-to-photo conversion using pix2pix model.
+Flask web application for real-time draw2pix conversion using pix2pix model.
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -342,7 +342,7 @@ def health():
 if __name__ == '__main__':
     import argparse
     
-    parser = argparse.ArgumentParser(description='Sketch-to-Photo Web App')
+    parser = argparse.ArgumentParser(description='draw2pix Web App')
     parser.add_argument('--model_dir', type=str, default='pretrained_models',
                         help='Directory containing .pth model files (default: pretrained_models)')
     parser.add_argument('--input_nc', type=int, default=1,

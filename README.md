@@ -1,6 +1,6 @@
 # draw2pix
 
-> **Real-time sketch-to-photo conversion** for flower drawings using pix2pix GAN  🎨 → 🌸
+> **Real-time draw2pix conversion** for flower drawings using pix2pix GAN  🎨 → 🌸
 
 Transform rough sketches of flowers into photorealistic images through an interactive web interface. Built on the pix2pix architecture and trained on a custom dataset of 12k+ flower images.
 

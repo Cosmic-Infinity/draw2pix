@@ -1,4 +1,4 @@
-# Sketch-to-Photo Web Application
+# draw2pix Web Application
 
 This web application provides a real-time drawing interface that converts your sketches into photorealistic images using your trained pix2pix model.
 

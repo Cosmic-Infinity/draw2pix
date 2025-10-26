@@ -1,8 +1,8 @@
 @echo off
-REM Quick start script for the Sketch-to-Photo Web Application
+REM Quick start script for the draw2pix Web Application
 
 echo ========================================
-echo   Sketch-to-Photo Web Application
+echo   draw2pix Web Application
 echo ========================================
 echo.
 
