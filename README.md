@@ -214,7 +214,7 @@ This project was made in collaboration of:
 
 <table>
 <tr>
-<td align="center" width="33%">
+<td align="center" width="35%">
 <a href="https://github.com/Cosmic-Infinity">
 <img src="https://github.com/Cosmic-Infinity.png" width="100px" style="border-radius: 50%; border: 3px solid #667eea;" alt="Shubham"/>
 </a>
