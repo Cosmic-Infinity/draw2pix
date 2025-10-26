@@ -297,7 +297,7 @@ This project was made in collaboration of:
 <br />
 <a href="https://github.com/ankit9"><b>Ankit</b></a>
 <br />
-<sub>📊 Dataset Curation</sub>
+<sub></sub>
 </td>
 </tr>
 <tr>
@@ -308,7 +308,7 @@ This project was made in collaboration of:
 <br />
 <a href="https://github.com/abhijeet841"><b>Abhijeet</b></a>
 <br />
-<sub>📊 Dataset Curation</sub>
+<sub></sub>
 </td>
 <td align="center" width="33%">
 </td>
