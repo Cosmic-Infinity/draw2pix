@@ -118,10 +118,10 @@ draw2pix/
 ### Available Models
 | Model | Epochs | Dataset | Lambda L1 | Learning Rate |
 |-------|--------|---------|-----------|---------------|
-| G_100e_cleanT_L65_Lr25 | 100 | Clean | 65 | 0.00025 |
-| G_250e_cleanT_L50_Lr10 | 250 | Clean | 50 | 0.0001 |
-| G_250e_cleanT_L85_Lr22 | 250 | Clean | 85 | 0.00022 |
-| G_300e_dirtyT_L100_Lr20 | 300 | Dirty | 100 | 0.0002 |
+| G_100e_cleanT_L65_Lr25 | 100 | Clean (9.5k+) | 65 | 0.00025 |
+| G_250e_cleanT_L50_Lr10 | 250 | Clean (9.5k+) | 50 | 0.0001 |
+| G_250e_cleanT_L85_Lr22 | 250 | Clean (9.5k+) | 85 | 0.00022 |
+| G_300e_dirtyT_L100_Lr20 | 300 | Dirty (12.5k+) | 100 | 0.0002 |
 
 ---
 
