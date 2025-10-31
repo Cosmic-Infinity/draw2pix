@@ -90,11 +90,8 @@ draw2pix/
 │   ├── index.html              # Frontend interface
 │   ├── web_app.py              # Flask web application
 │   └── test_setup.py           # Setup verification script
-├── pretrained_models/          # Trained model weights
-│   ├── G_100e_cleanT_L65_Lr25.pth
-│   ├── G_250e_cleanT_L50_Lr10.pth
-│   ├── G_250e_cleanT_L85_Lr22.pth
-│   └── G_300e_dirtyT_L100_Lr20.pth
+├── pretrained_models/          # Trained model weights (.pth files)
+│   └── *.pth                   # Downloaded from releases
 ├── pix2pix/                    # Original pix2pix framework
 │   ├── models/                 # Model architectures
 │   ├── options/                # Configuration options
