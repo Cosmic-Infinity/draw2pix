@@ -30,7 +30,7 @@
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    FLASK WEB SERVER                          │
-│                      (web_app.py)                            │
+│                    (app/web_app.py)                          │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │                 Flask Application                      │  │
 │  │                                                        │  │
@@ -113,27 +113,32 @@
 ## File Structure
 
 ```
+
 draw2pix/
-├── web_app.py                   # Flask backend server
 ├── app/
-│   └── index.html               # Frontend UI
+│ ├── index.html # Frontend UI
+│ ├── web_app.py # Flask backend server
+│ └── test_setup.py # Setup verification
 ├── pretrained_models/
-│   └── *.pth                    # Trained model weights
-├── requirements_webapp.txt       # Python dependencies
-├── WEB_APP_README.md            # Documentation
-├── start_webapp.bat             # Quick start script
-├── test_setup.py                # Setup verification
+│ └── \*.pth # Trained model weights
+├── docs/
+│ ├── WEB_APP_README.md # Documentation
+│ ├── ARCHITECTURE.md # This file
+│ └── RELEASE_GUIDE.md # Release guide
 ├── pix2pix/
-│   ├── models/
-│   │   ├── pix2pix_model.py     # Model definition
-│   │   └── networks.py          # Network architectures
-│   ├── options/
-│   │   ├── base_options.py      # Base configuration
-│   │   └── test_options.py      # Test configuration
-│   ├── util/
-│   │   └── util.py              # Utility functions
-│   └── data/
-│       └── __init__.py          # Data loading utilities
+│ ├── models/
+│ │ ├── pix2pix_model.py # Model definition
+│ │ └── networks.py # Network architectures
+│ ├── options/
+│ │ ├── base_options.py # Base configuration
+│ │ └── test_options.py # Test configuration
+│ ├── util/
+│ │ └── util.py # Utility functions
+│ └── data/
+│ └── **init**.py # Data loading utilities
+├── requirements.txt # Python dependencies
+└── start.bat # Quick start script
+
 ```
 
 ## Technology Stack

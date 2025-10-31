@@ -54,7 +54,7 @@ def check_files():
     print("\nChecking files...")
     
     required_files = [
-        'web_app.py',
+        'app/web_app.py',
         'app/index.html',
         'pix2pix/models/pix2pix_model.py',
         'pix2pix/options/test_options.py',
@@ -116,9 +116,9 @@ def main():
     if deps_ok and files_ok:
         print("✅ Setup verification PASSED!")
         print("\nYou can now start the web application:")
-        print("  python web_app.py --model_path latest_net_G.pth")
+        print("  python app/web_app.py --model_dir pretrained_models")
         print("\nOr use the quick start script:")
-        print("  start_webapp.bat")
+        print("  start.bat")
         return 0
     else:
         print("❌ Setup verification FAILED!")

@@ -46,7 +46,7 @@ Transform rough sketches of flowers into photorealistic images through an intera
    start.bat
    
    # Linux/Mac
-   python web_app.py --model_dir pretrained_models
+   python app/web_app.py --model_dir pretrained_models
    ```
 
 4. **Open your browser**
@@ -70,7 +70,7 @@ Transform rough sketches of flowers into photorealistic images through an intera
 ### Command Line Options
 
 ```bash
-python web_app.py [options]
+python app/web_app.py [options]
 
 Options:
   --model_dir       Directory containing .pth model files (default: pretrained_models)
@@ -86,9 +86,10 @@ Options:
 
 ```
 draw2pix/
-├── web_app.py                  # Flask web application
-├── app/                        # Frontend (HTML/CSS/JS)
-│   └── index.html
+├── app/
+│   ├── index.html              # Frontend interface
+│   ├── web_app.py              # Flask web application
+│   └── test_setup.py           # Setup verification script
 ├── pretrained_models/          # Trained model weights
 │   ├── G_100e_cleanT_L65_Lr25.pth
 │   ├── G_250e_cleanT_L50_Lr10.pth
@@ -99,9 +100,12 @@ draw2pix/
 │   ├── options/                # Configuration options
 │   ├── data/                   # Data loading utilities
 │   └── util/                   # Helper functions
+├── docs/                       # Documentation files
+│   ├── WEB_APP_README.md
+│   ├── ARCHITECTURE.md
+│   └── RELEASE_GUIDE.md
 ├── requirements.txt            # Python dependencies
-├── test_setup.py              # Setup verification script
-└── start.bat                  # Quick start script (Windows)
+└── start.bat                   # Quick start script (Windows)
 ```
 
 ---
@@ -147,8 +151,9 @@ draw2pix/
 
 ## 📖 Documentation
 
-- **[WEB_APP_README.md](WEB_APP_README.md)** - Detailed web application guide
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and data flow
+- **[docs/WEB_APP_README.md](docs/WEB_APP_README.md)** - Detailed web application guide
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and data flow
+- **[docs/RELEASE_GUIDE.md](docs/RELEASE_GUIDE.md)** - Guide for creating and publishing releases
 
 ---
 
@@ -178,7 +183,7 @@ This is an academic project. For questions or suggestions:
 
 ## 📝 License
 
-- **Custom Code** (web_app.py, app/, etc.): [MIT License](LICENSE)
+- **Custom Code** (app/, docs/, etc.): [MIT License](LICENSE)
 - **pix2pix Framework**: BSD License - See [pix2pix/THIRD_PARTY_LICENSES.txt](pix2pix/THIRD_PARTY_LICENSES.txt)
 - **Trained Models**: Created by this project (MIT License)
 

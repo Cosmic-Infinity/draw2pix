@@ -12,7 +12,7 @@ set REPO_OWNER=Cosmic-Infinity
 set REPO_NAME=draw2pix
 set MODELS_DIR=pretrained_models
 set VERSION_FILE=%MODELS_DIR%\version.txt
-set GITHUB_API_URL=https://api.github.com/repos/%REPO_OWNER%/%REPO_NAME%/releases/latest
+set GITHUB_RELEASES_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest/download/pretrained_models.zip
 
 REM Check if Flask is installed
 python -c "import flask" 2>NUL
@@ -65,18 +65,29 @@ REM Fetch latest version from GitHub if we have a current version or models are 
 if %MODELS_MISSING%==1 (
     echo Fetching latest release information from GitHub...
     call :GetLatestVersion
+    if "!LATEST_VERSION!"=="unknown" (
+        echo Note: Could not determine version, but download may still work.
+        echo.
+    ) else (
+        echo Latest release version: !LATEST_VERSION!
+        echo.
+    )
 ) else if not "!CURRENT_VERSION!"=="" (
     echo Checking for updates...
+    echo Current version: !CURRENT_VERSION!
     call :GetLatestVersion
     
-    if not "!CURRENT_VERSION!"=="!LATEST_VERSION!" (
-        if not "!LATEST_VERSION!"=="unknown" (
-            set VERSION_MISMATCH=1
-            echo Latest model version: !LATEST_VERSION!
-            echo A different version of pretrained models is available.
-            echo.
-        )
+    if "!LATEST_VERSION!"=="unknown" (
+        echo Note: Could not check for updates. You can still download manually if needed.
+        echo.
+    ) else if not "!CURRENT_VERSION!"=="!LATEST_VERSION!" (
+        set VERSION_MISMATCH=1
+        echo Latest version: !LATEST_VERSION!
+        echo.
+        echo A different version of pretrained models is available.
+        echo.
     ) else (
+        echo Latest version: !LATEST_VERSION!
         echo Models are up to date.
         echo.
     )
@@ -88,19 +99,26 @@ if %MODELS_MISSING%==1 (
     echo ========================================
     echo   Pretrained Models Not Found
     echo ========================================
-    echo No pretrained model files (.pth) found in the pretrained_models directory.
+    echo No pretrained model files found in the pretrained_models directory.
     echo.
     
     if "!LATEST_VERSION!"=="unknown" (
         echo ERROR: Could not fetch latest release from GitHub.
-        echo Please download manually from:
+        echo.
+        echo You can try downloading manually from:
         echo https://github.com/%REPO_OWNER%/%REPO_NAME%/releases
-        pause
-        exit /b 1
+        echo.
+        set /p try_anyway="Try downloading anyway? (y/n): "
+        if /i not "!try_anyway!"=="y" (
+            pause
+            exit /b 1
+        )
     )
     
     echo Would you like to automatically download them from GitHub releases?
-    echo Latest version: !LATEST_VERSION!
+    if not "!LATEST_VERSION!"=="unknown" (
+        echo Latest version: !LATEST_VERSION!
+    )
     echo.
     set /p download_choice="Download models now? (y/n): "
     
@@ -123,6 +141,9 @@ if %MODELS_MISSING%==1 (
         exit /b 1
     )
 ) else if %VERSION_MISMATCH%==1 (
+    echo.
+    echo Current version: !CURRENT_VERSION!
+    echo Latest version: !LATEST_VERSION!
     echo.
     set /p update_choice="Would you like to download the latest version? (y/n): "
     
@@ -147,32 +168,50 @@ echo Press Ctrl+C to stop the server
 echo.
 
 REM Start the web application (loads all .pth files in pretrained_models directory)
-python web_app.py --model_dir pretrained_models
+python app\web_app.py --model_dir pretrained_models
+
+REM Auto-open the web page in the default browser
+start http://127.0.0.1:5000
 
 pause
 exit /b 0
 
 :GetLatestVersion
-REM Fetch latest release version from GitHub API
-set TEMP_JSON=%TEMP%\github_release.json
+REM Fetch latest release version from GitHub
+REM We'll try to get the version info by downloading a small test request
+set TEMP_REDIRECT=%TEMP%\github_redirect.txt
 
-powershell -Command "& {try { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%GITHUB_API_URL%' -OutFile '%TEMP_JSON%' -UseBasicParsing; exit 0 } catch { exit 1 }}" >NUL 2>&1
+REM Use PowerShell to follow the redirect and get the final URL
+powershell -Command "$response = Invoke-WebRequest -Uri 'https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest' -MaximumRedirection 1 -ErrorAction SilentlyContinue; if ($response) { $finalUrl = $response.BaseResponse.ResponseUri.AbsoluteUri; $tag = ($finalUrl -split '/')[-1]; Write-Output $tag } else { Write-Output 'unknown' }" > "%TEMP_REDIRECT%" 2>NUL
 
 if errorlevel 1 (
+    echo Warning: Could not fetch latest version from GitHub.
     set LATEST_VERSION=unknown
-    exit /b 1
+    set RELEASE_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest/download/pretrained_models.zip
+    del /f /q "%TEMP_REDIRECT%" >NUL 2>&1
+    exit /b 0
 )
 
-REM Parse JSON to get tag_name and download URL
-for /f "tokens=*" %%a in ('powershell -Command "& {$json = Get-Content '%TEMP_JSON%' -Raw | ConvertFrom-Json; Write-Output $json.tag_name}"') do set LATEST_VERSION=%%a
-for /f "tokens=*" %%a in ('powershell -Command "& {$json = Get-Content '%TEMP_JSON%' -Raw | ConvertFrom-Json; $asset = $json.assets | Where-Object {$_.name -eq 'pretrained_models.zip'}; if ($asset) {Write-Output $asset.browser_download_url}}"') do set RELEASE_URL=%%a
+REM Read the version tag from temp file
+for /f "tokens=*" %%a in ('type "%TEMP_REDIRECT%"') do set LATEST_VERSION=%%a
 
-del /f /q "%TEMP_JSON%" >NUL 2>&1
-
-if "!RELEASE_URL!"=="" (
+if "!LATEST_VERSION!"=="" (
     set LATEST_VERSION=unknown
-    exit /b 1
+    set RELEASE_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest/download/pretrained_models.zip
+    del /f /q "%TEMP_REDIRECT%" >NUL 2>&1
+    exit /b 0
 )
+
+del /f /q "%TEMP_REDIRECT%" >NUL 2>&1
+
+if "!LATEST_VERSION!"=="" (
+    set LATEST_VERSION=unknown
+    set RELEASE_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest/download/pretrained_models.zip
+    exit /b 0
+)
+
+REM Set the download URL for the latest version
+set RELEASE_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/download/!LATEST_VERSION!/pretrained_models.zip
 
 exit /b 0
 
@@ -196,6 +235,9 @@ if errorlevel 1 (
 REM Backup existing models if version exists
 if not "!OLD_VERSION!"=="" (
     set BACKUP_DIR=pretrained_models_old_!OLD_VERSION!
+    echo Current version: !OLD_VERSION!
+    echo Target version: !LATEST_VERSION!
+    echo.
     echo Backing up current models to !BACKUP_DIR!...
     
     if exist "!BACKUP_DIR!" (
@@ -224,13 +266,15 @@ if not "!OLD_VERSION!"=="" (
 
 REM Download the zip file
 echo Downloading models from GitHub releases...
-echo Version: !LATEST_VERSION!
+if not "!LATEST_VERSION!"=="unknown" (
+    echo Target version: !LATEST_VERSION!
+)
 echo URL: !RELEASE_URL!
 echo.
 
 set TEMP_ZIP=%TEMP%\pretrained_models.zip
 
-powershell -Command "& {try { $ProgressPreference = 'SilentlyContinue'; Write-Host 'Downloading...'; Invoke-WebRequest -Uri '%RELEASE_URL%' -OutFile '%TEMP_ZIP%' -UseBasicParsing; exit 0 } catch { Write-Host 'Download failed:' $_.Exception.Message; exit 1 }}"
+powershell -Command "& {try { Write-Host 'Downloading...'; Invoke-WebRequest -Uri '%RELEASE_URL%' -OutFile '%TEMP_ZIP%' -UseBasicParsing; exit 0 } catch { Write-Host 'Download failed:' $_.Exception.Message; exit 1 }}"
 
 if errorlevel 1 (
     echo.
@@ -260,7 +304,7 @@ REM Clean up temp extract directory if it exists
 if exist "%TEMP_EXTRACT%" rmdir /s /q "%TEMP_EXTRACT%"
 mkdir "%TEMP_EXTRACT%"
 
-powershell -Command "& {try { Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%TEMP_EXTRACT%' -Force; exit 0 } catch { Write-Host 'Extraction failed:' $_.Exception.Message; exit 1 }}"
+powershell -Command "& {try { Write-Host 'Extracting...'; Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%TEMP_EXTRACT%' -Force; exit 0 } catch { Write-Host 'Extraction failed:' $_.Exception.Message; exit 1 }}"
 
 if errorlevel 1 (
     echo.
@@ -278,6 +322,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Extraction complete!
+echo.
+
 REM Move extracted files to pretrained_models directory root
 echo Moving files to pretrained_models directory...
 xcopy "%TEMP_EXTRACT%\*" "%MODELS_DIR%\" /E /I /Q /H /Y >NUL 2>&1
@@ -285,6 +332,9 @@ xcopy "%TEMP_EXTRACT%\*" "%MODELS_DIR%\" /E /I /Q /H /Y >NUL 2>&1
 REM Clean up temp files
 del /f /q "%TEMP_ZIP%" >NUL 2>&1
 rmdir /s /q "%TEMP_EXTRACT%" >NUL 2>&1
+
+echo Files moved successfully!
+echo.
 
 REM Verify extraction
 dir /b %MODELS_DIR%\*.pth >NUL 2>&1

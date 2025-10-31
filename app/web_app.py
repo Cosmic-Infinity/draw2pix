@@ -11,13 +11,18 @@ import base64
 from pathlib import Path
 import argparse
 import glob
+import sys
+from pathlib import Path
+
+# Add parent directory to path for pix2pix imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import the model infrastructure
 from pix2pix.models.pix2pix_model import Pix2PixModel
 from pix2pix.options.test_options import TestOptions
 import torchvision.transforms as transforms
 
-app = Flask(__name__, template_folder='app')
+app = Flask(__name__, template_folder='.')
 
 # Global variables to hold models
 loaded_models = {}  # Dictionary to store all loaded models
