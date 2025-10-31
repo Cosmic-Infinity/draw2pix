@@ -17,7 +17,6 @@ Transform rough sketches of flowers into photorealistic images through an intera
 - 🎨 **Multiple Variations** - Generate up to 4 different outputs from one sketch
 - 🔧 **Adjustable Perturbations** - Control output diversity with strength settings
 - 🔄 **Model Switching** - Load and switch between multiple trained models
-- 📱 **Responsive Design** - Works on desktop and tablet devices
 
 ---
 
