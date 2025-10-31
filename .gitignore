@@ -41,6 +41,10 @@ test/.coverage
 test/data/legacy_serialized.pt
 *~
 .idea
+*.pth
+
+# Model version backup directories
+pretrained_models_old_*/
 
 #Ignore Wandb
 wandb/
