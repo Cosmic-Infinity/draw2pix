@@ -26,7 +26,7 @@ Transform rough sketches of flowers into photorealistic images through an intera
 
 - Python 3.10.x
 
-### Installation
+### Installation [Windows/Linux/Mac]
 
 1. **Clone the repository**
    ```bash
@@ -51,6 +51,20 @@ Transform rough sketches of flowers into photorealistic images through an intera
 4. **Open your browser**
    ```
    http://127.0.0.1:5000
+   ```
+
+---
+
+### Alternative Installation [Windows only]
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Cosmic-Infinity/draw2pix.git
+   cd draw2pix
+   ```
+2. **Start via quicklaunch**
+   ```bash
+   ./start.bat
    ```
 
 ---
