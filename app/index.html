@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>draw2pix</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+        overflow-x: hidden;
+      }
+
+      .container {
+        display: flex;
+        gap: 12px;
+        background: white;
+        padding: 15px;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        width: min(100%, calc(100vw - 20px));
+        max-width: 1500px;
+        height: min(calc(100vh - 40px), 840px);
+        min-height: 540px;
+        overflow: hidden;
+      }
+
+      .slider-sidebar {
+        flex: 0 1 10%;
+        max-width: 10%;
+        min-width: 120px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+        background: rgba(102, 126, 234, 0.05);
+        border-radius: 12px;
+        padding: 15px 8px;
+      }
+
+      .vertical-slider-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .slider-stack {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .slider-stack label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #667eea;
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        text-align: center;
+      }
+
+      .slider-stack input[type="range"] {
+        writing-mode: bt-lr;
+        -webkit-appearance: slider-vertical;
+        appearance: slider-vertical;
+        width: 8px;
+        height: 180px;
+      }
+
+      .value-display {
+        font-size: 11px;
+        font-weight: 600;
+        color: #667eea;
+        background: white;
+        padding: 3px 6px;
+        border-radius: 4px;
+        min-width: 35px;
+        text-align: center;
+      }
+
+      .sketch-area {
+        flex: 1 1 40%;
+        max-width: 40%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .sketch-area h2 {
+        font-size: 14px;
+        color: #667eea;
+        margin-bottom: 8px;
+      }
+
+      .right-panel {
+        flex: 1 1 50%;
+        max-width: 50%;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow: hidden;
+      }
+
+      .variations-area {
+        flex: 0 0 50%;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .variations-area h2 {
+        font-size: 13px;
+        color: #764ba2;
+        margin-bottom: 6px;
+        flex-shrink: 0;
+      }
+
+      .variations-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 6px;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .variation-item {
+        position: relative;
+        min-height: 0;
+      }
+
+      .variation-item .canvas-container {
+        width: 100%;
+        height: 100%;
+        border: 2px solid #764ba2;
+      }
+
+      .variation-item canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+
+      .download-variation-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(102, 126, 234, 0.9);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+        z-index: 10;
+      }
+
+      .download-variation-btn:hover {
+        opacity: 1;
+        background: rgba(102, 126, 234, 1);
+      }
+
+      .options-area {
+        flex: 0 0 50%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 6px;
+        background: rgba(102, 126, 234, 0.05);
+        border-radius: 12px;
+        overflow-y: auto;
+        min-height: 0;
+      }
+
+      .options-row {
+        display: flex;
+        gap: 6px;
+        align-items: stretch;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .options-row label {
+        font-size: 10px;
+        font-weight: 500;
+        color: #555;
+        min-width: 45px;
+        display: flex;
+        align-items: center;
+      }
+
+      .options-row select {
+        flex: 1;
+        padding: 4px 6px;
+        font-size: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+
+      .btn-group {
+        display: flex;
+        gap: 6px;
+        flex: 1;
+        height: 100%;
+      }
+
+      .btn-small {
+        padding: 8px 10px;
+        font-size: 13px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .canvas-container {
+        position: relative;
+        border: 3px solid #667eea;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        background: white;
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      canvas {
+        display: block;
+        cursor: crosshair;
+        border-radius: 8px;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+
+      input[type="range"] {
+        cursor: pointer;
+      }
+
+      button {
+        padding: 6px 12px;
+        font-size: 13px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        opacity: 0.9;
+      }
+
+      .btn-secondary {
+        background: #e8e8e8;
+        color: #333;
+      }
+
+      .btn-secondary:hover {
+        background: #d8d8d8;
+      }
+
+      .btn-secondary.active {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-danger {
+        background: #ff4757;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #ff3838;
+      }
+
+      .status {
+        font-weight: 600;
+      }
+
+      .status.processing {
+        background: #fff3cd;
+        color: #856404;
+      }
+
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .checkbox-group input[type="checkbox"] {
+        width: 13px;
+        height: 13px;
+        cursor: pointer;
+      }
+
+      .checkbox-group label {
+        font-size: 10px;
+        font-weight: 500;
+        color: #555;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Left Sidebar: Vertical Sliders (10%) -->
+      <div class="slider-sidebar">
+        <div class="vertical-slider-group">
+          <div class="value-display" id="brushSizeValue">2</div>
+          <div class="slider-stack">
+            <input type="range" id="brushSize" min="1" max="30" value="2" orient="vertical" />
+            <label for="brushSize">Brush Size</label>
+          </div>
+        </div>
+
+        <div class="vertical-slider-group">
+          <div class="value-display" id="brushDarknessValue">75%</div>
+          <div class="slider-stack">
+            <input type="range" id="brushDarkness" min="0" max="100" value="75" orient="vertical" />
+            <label for="brushDarkness">Intensity</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Middle: Sketch Canvas (40%) -->
+      <div class="sketch-area">
+        <h2>Sketch</h2>
+        <div class="canvas-container">
+          <canvas id="drawCanvas" width="512" height="512"></canvas>
+        </div>
+      </div>
+
+      <!-- Right Panel: Variations + Options (50%) -->
+      <div class="right-panel">
+        <!-- Variations Area (top) -->
+        <div class="variations-area">
+          <h2>Variations</h2>
+          <div class="variations-grid">
+            <div class="variation-item">
+              <div class="canvas-container">
+                <canvas id="resultCanvas1" width="256" height="256"></canvas>
+                <button class="download-variation-btn" onclick="downloadVariation(0)" title="Download this variation">💾</button>
+              </div>
+            </div>
+            <div class="variation-item">
+              <div class="canvas-container">
+                <canvas id="resultCanvas2" width="256" height="256"></canvas>
+                <button class="download-variation-btn" onclick="downloadVariation(1)" title="Download this variation">💾</button>
+              </div>
+            </div>
+            <div class="variation-item">
+              <div class="canvas-container">
+                <canvas id="resultCanvas3" width="256" height="256"></canvas>
+                <button class="download-variation-btn" onclick="downloadVariation(2)" title="Download this variation">💾</button>
+              </div>
+            </div>
+            <div class="variation-item">
+              <div class="canvas-container">
+                <canvas id="resultCanvas4" width="256" height="256"></canvas>
+                <button class="download-variation-btn" onclick="downloadVariation(3)" title="Download this variation">💾</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Options Area (bottom) -->
+        <div class="options-area">
+          <!-- Row 1: Model Selection -->
+          <div class="options-row">
+            <label for="modelSelect">Model:</label>
+            <select id="modelSelect">
+              <option value="">Loading...</option>
+            </select>
+          </div>
+
+          <!-- Row 2: Brush, Eraser, Undo, Redo -->
+          <div class="options-row">
+            <div class="btn-group" style="width: 100%">
+              <button class="btn-small btn-secondary active" id="brushBtn" title="Brush (B)">🖌️</button>
+              <button class="btn-small btn-secondary" id="eraserBtn" title="Eraser (E)">🧽</button>
+              <button class="btn-small btn-secondary" id="undoBtn" title="Undo (Ctrl+Z)">↶</button>
+              <button class="btn-small btn-secondary" id="redoBtn" title="Redo (Ctrl+Y)">↷</button>
+            </div>
+          </div>
+
+          <!-- Row 3: Clear Canvas, Upload Image, Download Sketch -->
+          <div class="options-row">
+            <div class="btn-group" style="width: 100%">
+              <button class="btn-small btn-danger" id="clearBtn" title="Clear Canvas">🗑️ Clear</button>
+              <button class="btn-small btn-secondary" onclick="document.getElementById('uploadImage').click()" title="Upload Image">📁 Upload</button>
+              <button class="btn-small btn-secondary" id="downloadSketchBtn" title="Download Sketch (256x256)">💾 Save Sketch</button>
+            </div>
+          </div>
+          <input type="file" id="uploadImage" accept="image/*" style="display: none" />
+
+          <div class="options-row">
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; width: 100%">
+              <div class="checkbox-group">
+                <input type="checkbox" id="autoGenerate" checked />
+                <label for="autoGenerate">Auto-generate</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="useDropout" />
+                <label for="useDropout">Dropout</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="usePerturbation" checked />
+                <label for="usePerturbation">Perturbation</label>
+              </div>
+              <select id="perturbationStrength" style="flex: 1; min-width: 70px; padding: 4px 6px; font-size: 10px; border: 1px solid #ddd; border-radius: 4px">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="options-row">
+            <button class="btn-small btn-primary" id="generateBtn" title="Generate Variations" style="width: 100%; padding: 10px">🎨 Generate</button>
+          </div>
+
+          <div class="options-row">
+            <div id="status" class="status" style="display: none; width: 100%; padding: 8px; border-radius: 4px; text-align: center; font-size: 10px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const drawCanvas = document.getElementById("drawCanvas");
+      const resultCanvases = [document.getElementById("resultCanvas1"), document.getElementById("resultCanvas2"), document.getElementById("resultCanvas3"), document.getElementById("resultCanvas4")];
+      const drawCtx = drawCanvas.getContext("2d");
+      const resultContexts = resultCanvases.map((canvas) => canvas.getContext("2d"));
+
+      drawCtx.fillStyle = "white";
+      drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+      resultContexts.forEach((ctx) => {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      });
+
+      let isDrawing = false;
+      let lastX = 0;
+      let lastY = 0;
+      let currentTool = "brush";
+      let undoStack = [];
+      let redoStack = [];
+      const MAX_UNDO_STACK = 50;
+
+      const brushSizeInput = document.getElementById("brushSize");
+      const brushSizeValue = document.getElementById("brushSizeValue");
+      const brushDarknessInput = document.getElementById("brushDarkness");
+      const brushDarknessValue = document.getElementById("brushDarknessValue");
+      const autoGenerateCheckbox = document.getElementById("autoGenerate");
+      const generateBtn = document.getElementById("generateBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      const downloadSketchBtn = document.getElementById("downloadSketchBtn");
+      const statusDiv = document.getElementById("status");
+      const brushBtn = document.getElementById("brushBtn");
+      const eraserBtn = document.getElementById("eraserBtn");
+      const undoBtn = document.getElementById("undoBtn");
+      const redoBtn = document.getElementById("redoBtn");
+      const uploadImageInput = document.getElementById("uploadImage");
+      const modelSelect = document.getElementById("modelSelect");
+
+      async function loadAvailableModels() {
+        try {
+          const response = await fetch("/models");
+          const data = await response.json();
+          modelSelect.innerHTML = "";
+          data.models.forEach((model) => {
+            const option = document.createElement("option");
+            option.value = model;
+            option.textContent = model;
+            if (model === data.current) option.selected = true;
+            modelSelect.appendChild(option);
+          });
+          console.log(`Loaded ${data.models.length} models. Current: ${data.current}`);
+        } catch (error) {
+          console.error("Error loading models:", error);
+          modelSelect.innerHTML = '<option value="">Error loading models</option>';
+        }
+      }
+
+      modelSelect.addEventListener("change", async (e) => {
+        const selectedModel = e.target.value;
+        if (!selectedModel) return;
+        showStatus(`Switching to ${selectedModel}...`, "processing");
+        try {
+          const response = await fetch("/models/select", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: selectedModel }),
+          });
+          const data = await response.json();
+          if (data.success) {
+            showStatus(`Switched to ${selectedModel} - Generating...`, "processing");
+            console.log(`Now using model: ${data.current}`);
+            await generateImage();
+          } else {
+            showStatus("Error switching model", "error");
+          }
+        } catch (error) {
+          console.error("Error switching model:", error);
+          showStatus("Error switching model", "error");
+        }
+      });
+
+      const useDropoutCheckbox = document.getElementById("useDropout");
+      const usePerturbationCheckbox = document.getElementById("usePerturbation");
+      const perturbationStrengthSelect = document.getElementById("perturbationStrength");
+
+      [useDropoutCheckbox, usePerturbationCheckbox, perturbationStrengthSelect].forEach((el) => {
+        el.addEventListener("change", () => {
+          if (autoGenerateCheckbox.checked) generateImage();
+        });
+      });
+
+      function saveState() {
+        const imageData = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+        undoStack.push(imageData);
+        if (undoStack.length > MAX_UNDO_STACK) undoStack.shift();
+        redoStack = [];
+        updateUndoRedoButtons();
+      }
+
+      function restoreState(imageData) {
+        drawCtx.putImageData(imageData, 0, 0);
+      }
+
+      function updateUndoRedoButtons() {
+        undoBtn.disabled = undoStack.length === 0;
+        redoBtn.disabled = redoStack.length === 0;
+      }
+
+      saveState();
+
+      brushBtn.addEventListener("click", () => {
+        currentTool = "brush";
+        brushBtn.classList.add("active");
+        eraserBtn.classList.remove("active");
+        brushDarknessInput.disabled = false;
+      });
+
+      eraserBtn.addEventListener("click", () => {
+        currentTool = "eraser";
+        eraserBtn.classList.add("active");
+        brushBtn.classList.remove("active");
+        brushDarknessInput.disabled = true;
+      });
+
+      undoBtn.addEventListener("click", () => {
+        if (undoStack.length > 0) {
+          redoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+          restoreState(undoStack.pop());
+          updateUndoRedoButtons();
+          if (autoGenerateCheckbox.checked) generateImage();
+        }
+      });
+
+      redoBtn.addEventListener("click", () => {
+        if (redoStack.length > 0) {
+          undoStack.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+          restoreState(redoStack.pop());
+          updateUndoRedoButtons();
+          if (autoGenerateCheckbox.checked) generateImage();
+        }
+      });
+
+      brushSizeInput.addEventListener("input", (e) => {
+        brushSizeValue.textContent = e.target.value;
+      });
+
+      brushDarknessInput.addEventListener("input", (e) => {
+        brushDarknessValue.textContent = e.target.value + "%";
+      });
+
+      function startDrawing(e) {
+        saveState();
+        isDrawing = true;
+        const rect = drawCanvas.getBoundingClientRect();
+        const scaleX = drawCanvas.width / rect.width;
+        const scaleY = drawCanvas.height / rect.height;
+        lastX = (e.clientX - rect.left) * scaleX;
+        lastY = (e.clientY - rect.top) * scaleY;
+      }
+
+      function draw(e) {
+        if (!isDrawing) return;
+        const rect = drawCanvas.getBoundingClientRect();
+        const scaleX = drawCanvas.width / rect.width;
+        const scaleY = drawCanvas.height / rect.height;
+        const currentX = (e.clientX - rect.left) * scaleX;
+        const currentY = (e.clientY - rect.top) * scaleY;
+
+        if (currentTool === "eraser") {
+          drawCtx.strokeStyle = "white";
+        } else {
+          const darknessPercent = brushDarknessInput.value;
+          const grayValue = Math.round(255 * (1 - darknessPercent / 100));
+          drawCtx.strokeStyle = `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
+        }
+
+        drawCtx.globalCompositeOperation = "source-over";
+        drawCtx.lineWidth = brushSizeInput.value;
+        drawCtx.lineCap = "round";
+        drawCtx.lineJoin = "round";
+        drawCtx.beginPath();
+        drawCtx.moveTo(lastX, lastY);
+        drawCtx.lineTo(currentX, currentY);
+        drawCtx.stroke();
+        lastX = currentX;
+        lastY = currentY;
+      }
+
+      function stopDrawing() {
+        if (isDrawing && autoGenerateCheckbox.checked) generateImage();
+        isDrawing = false;
+      }
+
+      drawCanvas.addEventListener("mousedown", startDrawing);
+      drawCanvas.addEventListener("mousemove", draw);
+      drawCanvas.addEventListener("mouseup", stopDrawing);
+      drawCanvas.addEventListener("mouseout", stopDrawing);
+
+      drawCanvas.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        startDrawing(new MouseEvent("mousedown", { clientX: touch.clientX, clientY: touch.clientY }));
+      });
+
+      drawCanvas.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        draw(new MouseEvent("mousemove", { clientX: touch.clientX, clientY: touch.clientY }));
+      });
+
+      drawCanvas.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        stopDrawing();
+      });
+
+      clearBtn.addEventListener("click", () => {
+        saveState();
+        drawCtx.fillStyle = "white";
+        drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+        resultContexts.forEach((ctx) => {
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        });
+        showStatus("Canvas cleared!", "success");
+      });
+
+      downloadSketchBtn.addEventListener("click", () => {
+        // Create a temporary 256x256 canvas
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = 256;
+        tempCanvas.height = 256;
+        const tempCtx = tempCanvas.getContext("2d");
+
+        // Draw the sketch canvas scaled down to 256x256
+        tempCtx.drawImage(drawCanvas, 0, 0, 256, 256);
+
+        // Convert to download link
+        const link = document.createElement("a");
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
+        link.download = `sketch-${timestamp}.png`;
+        link.href = tempCanvas.toDataURL("image/png");
+        link.click();
+
+        showStatus("Sketch downloaded! (256x256)", "success");
+      });
+
+      uploadImageInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+          showStatus("Please upload an image file!", "error");
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          showStatus("Image too large! Please use an image under 10MB.", "error");
+          return;
+        }
+        showStatus("Loading image...", "processing");
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              saveState();
+              drawCtx.fillStyle = "white";
+              drawCtx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+              const canvasAspect = drawCanvas.width / drawCanvas.height;
+              const imgAspect = img.width / img.height;
+              let drawWidth, drawHeight, offsetX, offsetY;
+              if (imgAspect > canvasAspect) {
+                drawWidth = drawCanvas.width;
+                drawHeight = drawCanvas.width / imgAspect;
+                offsetX = 0;
+                offsetY = (drawCanvas.height - drawHeight) / 2;
+              } else {
+                drawHeight = drawCanvas.height;
+                drawWidth = drawCanvas.height * imgAspect;
+                offsetX = (drawCanvas.width - drawWidth) / 2;
+                offsetY = 0;
+              }
+              drawCtx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+              showStatus("Image loaded! Click Generate to create photo.", "success");
+              if (autoGenerateCheckbox.checked) generateImage();
+              uploadImageInput.value = "";
+            } catch (error) {
+              console.error("Error loading image:", error);
+              showStatus("Error loading image: " + error.message, "error");
+            }
+          };
+          img.onerror = () => {
+            showStatus("Failed to load image. Please try another file.", "error");
+            uploadImageInput.value = "";
+          };
+          img.src = event.target.result;
+        };
+        reader.onerror = () => {
+          showStatus("Failed to read file. Please try again.", "error");
+          uploadImageInput.value = "";
+        };
+        reader.readAsDataURL(file);
+      });
+
+      function showStatus(message, type) {
+        statusDiv.textContent = message;
+        statusDiv.className = `status ${type}`;
+        statusDiv.style.display = "block";
+        if (type === "success") {
+          setTimeout(() => {
+            statusDiv.style.display = "none";
+          }, 3000);
+        }
+      }
+
+      let isGenerating = false;
+      async function generateImage() {
+        if (isGenerating) return;
+        isGenerating = true;
+        const useDropout = document.getElementById("useDropout").checked;
+        const usePerturbation = document.getElementById("usePerturbation").checked;
+        const perturbationStrength = document.getElementById("perturbationStrength").value;
+        let statusMsg = "Generating 4 variations";
+        if (useDropout || usePerturbation) {
+          statusMsg += " (";
+          const methods = [];
+          if (useDropout) methods.push("dropout");
+          if (usePerturbation) methods.push(`${perturbationStrength} perturbation`);
+          statusMsg += methods.join(" + ") + ")";
+        } else {
+          statusMsg += " (identical)";
+        }
+        statusMsg += "...";
+        showStatus(statusMsg, "processing");
+        generateBtn.disabled = true;
+        try {
+          const sketchData = drawCanvas.toDataURL("image/png");
+          const response = await fetch("/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sketch: sketchData,
+              num_variations: 4,
+              use_dropout: useDropout,
+              use_perturbation: usePerturbation,
+              perturbation_strength: perturbationStrength,
+            }),
+          });
+          if (!response.ok) throw new Error(`Server error: ${response.status}`);
+          const data = await response.json();
+          if (data.error) throw new Error(data.error);
+          if (!data.results || data.results.length !== 4) throw new Error("Expected 4 results from server");
+          let loadedCount = 0;
+          data.results.forEach((result, index) => {
+            const resultImage = new Image();
+            resultImage.onload = () => {
+              resultContexts[index].drawImage(resultImage, 0, 0, resultCanvases[index].width, resultCanvases[index].height);
+              loadedCount++;
+              if (loadedCount === data.results.length) {
+                showStatus(`${data.results.length} variations generated!`, "success");
+              }
+            };
+            resultImage.src = result;
+          });
+        } catch (error) {
+          console.error("Error:", error);
+          showStatus(`Error: ${error.message}`, "error");
+        } finally {
+          isGenerating = false;
+          generateBtn.disabled = false;
+        }
+      }
+
+      generateBtn.addEventListener("click", generateImage);
+
+      function downloadVariation(index) {
+        const canvas = resultCanvases[index];
+        if (!canvas) {
+          showStatus("Variation not available yet.", "error");
+          return;
+        }
+        const link = document.createElement("a");
+        link.download = `generated-photo-v${index + 1}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        showStatus(`Variation ${index + 1} downloaded!`, "success");
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.ctrlKey && e.key === "z" && !e.shiftKey) {
+          e.preventDefault();
+          undoBtn.click();
+        }
+        if ((e.ctrlKey && e.key === "y") || (e.ctrlKey && e.shiftKey && e.key === "z")) {
+          e.preventDefault();
+          redoBtn.click();
+        }
+        if (e.key === "e" || e.key === "E") eraserBtn.click();
+        if (e.key === "b" || e.key === "B") brushBtn.click();
+      });
+
+      loadAvailableModels();
+      showStatus("Ready! Start drawing on the left canvas.", "success");
+    </script>
+  </body>
+</html>

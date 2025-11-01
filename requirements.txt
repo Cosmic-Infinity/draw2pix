@@ -1,0 +1,72 @@
+# =============================================================================
+# Unified Requirements for draw2pix Project
+# =============================================================================
+# This file contains all dependencies for both the web application and the
+# original pix2pix training/testing infrastructure.
+#
+# For web app only (minimal setup), you only need packages marked [WEB APP]
+# For training/testing with pix2pix, you need packages marked [TRAINING]
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Core Dependencies - Required for Web Application [WEB APP]
+# -----------------------------------------------------------------------------
+
+# Web Framework
+Flask>=3.0.0                    # [WEB APP] Web server for real-time inference
+Werkzeug>=3.0.0                 # [WEB APP] WSGI utility library (Flask dependency)
+
+# Deep Learning Framework
+torch>=2.0.0                    # [WEB APP] PyTorch - core deep learning framework
+torchvision>=0.15.0             # [WEB APP] Image transformations and models
+
+# Image Processing
+Pillow>=10.0.0                  # [WEB APP] Image loading, manipulation, and format conversion
+numpy>=1.24.0                   # [WEB APP] Numerical operations and array handling
+
+# -----------------------------------------------------------------------------
+# Optional Dependencies - For Training/Testing Only [TRAINING]
+# -----------------------------------------------------------------------------
+
+# Training Visualization (NOT needed for web app)
+# visdom>=0.2.0                 # [TRAINING] Real-time training visualization
+# dominate>=2.7.0               # [TRAINING] HTML generation for result pages
+# wandb                         # [TRAINING] Weights & Biases experiment tracking (optional)
+
+# Advanced Image Processing (NOT needed for web app)
+# scikit-image>=0.21.0          # [TRAINING] Only needed for colorization_dataset.py
+# opencv-python>=4.8.0          # [TRAINING] Only needed for combine_A_and_B.py dataset preparation
+
+# -----------------------------------------------------------------------------
+# Standard Library Dependencies (Already included with Python)
+# -----------------------------------------------------------------------------
+# The following are standard library modules and don't need to be installed:
+# - argparse, os, sys, io, base64, pathlib, glob, time, collections
+# - importlib, functools, abc, random, json
+# -----------------------------------------------------------------------------
+
+# =============================================================================
+# Installation Instructions
+# =============================================================================
+#
+# For Web Application Only (Recommended for production):
+#   pip install Flask Werkzeug torch torchvision Pillow numpy
+#
+# Or install from this file (includes all core dependencies):
+#   pip install -r requirements.txt
+#
+# For Training/Testing (if you want to retrain models):
+#   Uncomment the [TRAINING] packages above and run:
+#   pip install -r requirements.txt
+#
+# =============================================================================
+# Notes
+# =============================================================================
+#
+# 1. The web application (web_app.py) only needs the [WEB APP] packages
+# 2. Training scripts (pix2pix/train.py, pix2pix/test.py) need [TRAINING] packages
+# 3. Your pretrained models in pretrained_models/ work with just [WEB APP] packages
+# 4. PyTorch will auto-detect and use CUDA if available (for GPU acceleration)
+# 5. If you don't have a GPU, CPU inference will work but be slower
+#
+# =============================================================================
