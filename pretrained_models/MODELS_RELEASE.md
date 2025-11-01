@@ -1,7 +1,7 @@
 To avoid costs associated with git LFS, the models are being distribuetd via github releases.
 
-If you are on windows, simply launching the app from start.bat will prompt you through the downloading the models. </br>
-On Mac/Linux, you just have to Download the latest pretained_models.zip from the release, and extract it's contents to pretrained_models directory in the project.
+If you are on windows, simply launching the app from `start.bat` will prompt you through the downloading the models. </br>
+On Mac/Linux, you just have to Download the latest [pretained_models.zip](https://github.com/Cosmic-Infinity/draw2pix/releases/latest/) from the release, and extract it's contents to `draw2pix/pretrained_models` directory in the project.
 
 The zip file in the release will consists of 
 pretrained_models
