@@ -24,8 +24,7 @@ Transform rough sketches of flowers into photorealistic images through an intera
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- pip package manager
+- Python 3.10.x
 
 ### Installation
 
