@@ -36,12 +36,136 @@ def find_model_files(directory='.'):
     return sorted([Path(f).name for f in model_files])
 
 
-def load_single_model(model_path, input_nc=1, output_nc=3):
+def detect_architecture_from_filename(filename):
+    """
+    Detect the generator architecture from the model filename.
+    
+    Expected filename prefixes:
+    - U256_* or u256_* → unet_256
+    - U128_* or u128_* → unet_128
+    - R9_* or r9_* → resnet_9blocks
+    - R6_* or r6_* → resnet_6blocks
+    
+    Args:
+        filename (str): Model filename (e.g., "U256_model.pth")
+    
+    Returns:
+        str: One of 'unet_256', 'unet_128', 'resnet_9blocks', 'resnet_6blocks', or None if unable to detect
+    """
+    filename_lower = filename.lower()
+    
+    # Check for architecture prefixes
+    if filename_lower.startswith('u256_'):
+        return 'unet_256'
+    elif filename_lower.startswith('u128_'):
+        return 'unet_128'
+    elif filename_lower.startswith('r9_'):
+        return 'resnet_9blocks'
+    elif filename_lower.startswith('r6_'):
+        return 'resnet_6blocks'
+    else:
+        return None
+
+
+def detect_model_config_from_state_dict(model_path):
+    """
+    Detect input/output channels, normalization type, and dropout setting from the model's state dictionary.
+    
+    Returns:
+        dict: Configuration with 'input_nc', 'output_nc', 'norm', 'use_dropout' if detectable
+    """
+    try:
+        state_dict = torch.load(model_path, map_location='cpu', weights_only=True)
+        config = {}
+        
+        # Detect input channels from first conv layer
+        # For ResNet: model.1.weight shape is [64, input_nc, 7, 7]
+        if 'model.1.weight' in state_dict:
+            shape = state_dict['model.1.weight'].shape
+            config['input_nc'] = shape[1]  # Second dimension is input channels
+        
+        # Detect output channels from last conv layer
+        # Look for the final conv layer (usually has 'Tanh' after it)
+        for key in reversed(list(state_dict.keys())):
+            if 'weight' in key and len(state_dict[key].shape) == 4:
+                shape = state_dict[key].shape
+                if shape[0] == 3 or shape[0] == 1:  # Likely output layer
+                    config['output_nc'] = shape[0]
+                    break
+        
+        # Detect normalization type by checking for num_batches_tracked
+        # BatchNorm has num_batches_tracked, InstanceNorm does not
+        has_batch_tracked = any('num_batches_tracked' in key for key in state_dict.keys())
+        
+        if has_batch_tracked:
+            config['norm'] = 'batch'
+            print('Detected: Batch normalization (num_batches_tracked found)')
+        else:
+            config['norm'] = 'instance'
+            print('Detected: Instance normalization (no num_batches_tracked)')
+        
+        # Detect dropout usage by checking the conv_block structure
+        # ResNet with dropout has layers at indices like: 0,1,2,3,4,5,6,7 (7 is dropout)
+        # ResNet without dropout has layers at: 0,1,2,3,4,5,6 (6 is the last layer)
+        # Check if any residual block has a layer at index 7
+        resblock_keys = [k for k in state_dict.keys() if 'conv_block.7' in k]
+        if resblock_keys:
+            config['use_dropout'] = True
+            print('Detected: Model trained WITH dropout')
+        else:
+            # Check if we have conv_block.6 which would be the last layer without dropout
+            resblock_keys_6 = [k for k in state_dict.keys() if 'conv_block.6' in k and 'weight' in k]
+            if resblock_keys_6:
+                # Check the shape - if it's a conv layer [256, 256, 3, 3], dropout was used
+                # If it's a batch norm weight [256], no dropout was used
+                sample_key = resblock_keys_6[0]
+                if len(state_dict[sample_key].shape) == 4:
+                    config['use_dropout'] = True
+                    print('Detected: Model trained WITH dropout')
+                else:
+                    config['use_dropout'] = False
+                    print('Detected: Model trained WITHOUT dropout (--no_dropout)')
+        
+        print(f'Detected config from state dict: {config}')
+        return config
+    except Exception as e:
+        print(f'Warning: Could not detect config from state dict: {str(e)}')
+        return {}
+
+
+def load_single_model(model_path, input_nc=1, output_nc=3, netG=None):
     """Load a single pix2pix model with the trained weights."""
     
     # Verify model file exists first
     if not Path(model_path).exists():
         raise FileNotFoundError(f'Model file not found: {model_path}\nPlease ensure the model file exists in the specified location.')
+    
+    # Auto-detect architecture if not specified
+    if netG is None:
+        model_filename = Path(model_path).name
+        print(f'Auto-detecting architecture for {model_filename}...')
+        netG = detect_architecture_from_filename(model_filename)
+        if netG is None:
+            print('Warning: Could not auto-detect architecture from filename, using default: unet_256')
+            print('Expected filename format: U256_*.pth, U128_*.pth, R9_*.pth, or R6_*.pth')
+            netG = 'unet_256'
+        else:
+            print(f'Detected architecture: {netG}')
+    else:
+        print(f'Loading model with specified architecture: {netG}')
+    
+    # Detect input/output channels and normalization from the model file itself
+    model_config = detect_model_config_from_state_dict(model_path)
+    if 'input_nc' in model_config:
+        input_nc = model_config['input_nc']
+        print(f'Using detected input_nc: {input_nc}')
+    if 'output_nc' in model_config:
+        output_nc = model_config['output_nc']
+        print(f'Using detected output_nc: {output_nc}')
+    
+    # Use detected normalization, defaulting to instance norm if not detected
+    norm = model_config.get('norm', 'instance')
+    use_dropout = model_config.get('use_dropout', True)  # Default to True for backward compatibility
     
     # Create a minimal options object
     parser = argparse.ArgumentParser()
@@ -52,18 +176,22 @@ def load_single_model(model_path, input_nc=1, output_nc=3):
         '--dataroot', '.',  # dummy value
         '--name', 'sketch2photo',
         '--model', 'pix2pix',
-        '--netG', 'unet_256',
+        '--netG', netG,  # Use the detected/specified architecture
         '--direction', 'AtoB',
         '--dataset_mode', 'single',
-        '--norm', 'batch',
+        '--norm', norm,
         '--input_nc', str(input_nc),
         '--output_nc', str(output_nc),
-        '--no_dropout',
         '--load_size', '256',
         '--crop_size', '256',
         '--preprocess', 'none',  # No preprocessing for real-time
         '--epoch', 'none',  # Don't load from checkpoints
     ]
+    
+    # Add dropout flag based on detection
+    if not use_dropout:
+        args.append('--no_dropout')
+        print('Using --no_dropout flag (model was trained without dropout)')
     
     model_opt = model_opt.parse_args(args)
     model_opt.num_threads = 0
@@ -96,7 +224,7 @@ def load_single_model(model_path, input_nc=1, output_nc=3):
     return model, model_opt
 
 
-def initialize_all_models(model_dir='.', input_nc=1, output_nc=3):
+def initialize_all_models(model_dir='.', input_nc=1, output_nc=3, netG=None):
     """Initialize all pix2pix models found in the directory."""
     global loaded_models, current_model_name, opt
     
@@ -109,11 +237,11 @@ def initialize_all_models(model_dir='.', input_nc=1, output_nc=3):
     print(f'Found {len(model_files)} model(s): {", ".join(model_files)}')
     print('Loading all models into memory...')
     
-    # Load all models
+    # Load all models - each will auto-detect its architecture if netG not specified
     for model_file in model_files:
         model_path = Path(model_dir) / model_file
         try:
-            model, model_opt = load_single_model(str(model_path), input_nc, output_nc)
+            model, model_opt = load_single_model(str(model_path), input_nc, output_nc, netG)
             loaded_models[model_file] = {
                 'model': model,
                 'opt': model_opt
@@ -132,14 +260,21 @@ def initialize_all_models(model_dir='.', input_nc=1, output_nc=3):
     print(f'\nAll models loaded! Current model: {current_model_name}')
     print(f'Available models: {list(loaded_models.keys())}')
     return loaded_models
-    return model, opt
 
 
-def preprocess_sketch(image_data, target_size=256, add_perturbation=False, perturbation_strength='medium'):
+def preprocess_sketch(image_data, target_size=256, add_perturbation=False, perturbation_strength='medium', input_nc=1):
     """Convert base64 image data to tensor suitable for the model with optional perturbations."""
     # Decode base64 image
     img_bytes = base64.b64decode(image_data.split(',')[1])
-    img = Image.open(io.BytesIO(img_bytes)).convert('L')  # Convert to grayscale
+    img = Image.open(io.BytesIO(img_bytes))
+    
+    # Convert to appropriate format based on input channels
+    if input_nc == 1:
+        img = img.convert('L')  # Grayscale
+    elif input_nc == 3:
+        img = img.convert('RGB')  # RGB
+    else:
+        raise ValueError(f'Unsupported input_nc: {input_nc}')
     
     # Resize to model input size
     img = img.resize((target_size, target_size), Image.LANCZOS)
@@ -174,10 +309,16 @@ def preprocess_sketch(image_data, target_size=256, add_perturbation=False, pertu
         img = enhancer.enhance(contrast_factor)
     
     # Convert to tensor and normalize to [-1, 1]
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
-    ])
+    if input_nc == 1:
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,), (0.5,))
+        ])
+    else:  # input_nc == 3
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
     
     img_tensor = transform(img).unsqueeze(0)  # Add batch dimension
     return img_tensor
@@ -235,7 +376,11 @@ def generate():
         current_model = loaded_models[current_model_name]['model']
         current_opt = loaded_models[current_model_name]['opt']
         
+        # Get the input_nc from the model options
+        model_input_nc = current_opt.input_nc
+        
         print(f"Using model: {current_model_name}")
+        print(f"Model expects input_nc={model_input_nc}, output_nc={current_opt.output_nc}")
         print(f"Generating {num_variations} variation(s)...")
         print(f"Dropout: {use_dropout}, Perturbation: {use_perturbation} ({perturbation_strength})")
         
@@ -258,7 +403,8 @@ def generate():
                     sketch_data, 
                     target_size=current_opt.crop_size,
                     add_perturbation=apply_perturb,
-                    perturbation_strength=perturbation_strength
+                    perturbation_strength=perturbation_strength,
+                    input_nc=model_input_nc
                 )
                 input_tensors.append(tensor)
             input_batch = torch.cat(input_tensors, dim=0).to(current_opt.device)
@@ -267,7 +413,8 @@ def generate():
                 sketch_data, 
                 target_size=current_opt.crop_size,
                 add_perturbation=use_perturbation,
-                perturbation_strength=perturbation_strength
+                perturbation_strength=perturbation_strength,
+                input_nc=model_input_nc
             ).to(current_opt.device)
         
         print(f"Input batch shape: {input_batch.shape}")
@@ -354,6 +501,8 @@ if __name__ == '__main__':
                         help='Number of input channels (1 for grayscale sketch, 3 for RGB)')
     parser.add_argument('--output_nc', type=int, default=3,
                         help='Number of output channels (3 for RGB photo)')
+    parser.add_argument('--netG', type=str, default=None,
+                        help='Generator architecture: unet_256, unet_128, resnet_9blocks, resnet_6blocks. If not specified, will auto-detect from model file.')
     parser.add_argument('--port', type=int, default=5000,
                         help='Port to run the server on')
     parser.add_argument('--host', type=str, default='127.0.0.1',
@@ -364,7 +513,7 @@ if __name__ == '__main__':
     # Initialize all models
     print('Initializing models...')
     try:
-        initialize_all_models(args.model_dir, args.input_nc, args.output_nc)
+        initialize_all_models(args.model_dir, args.input_nc, args.output_nc, args.netG)
         print('All models initialized successfully!')
     except Exception as e:
         print(f'Error initializing models: {str(e)}')

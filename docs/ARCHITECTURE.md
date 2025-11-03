@@ -74,7 +74,7 @@ The draw2pix web application is a real-time sketch-to-photo conversion system th
 │  │    - Create batch for multiple variations           │  │
 │  │                                                        │  │
 │  │  model.netG.forward():                               │  │
-│  │    - U-Net 256 architecture                          │  │
+│  │    - Generator architecture (U-Net or ResNet)       │  │
 │  │    - Input: [N, 1, 256, 256] (grayscale batch)      │  │
 │  │    - Output: [N, 3, 256, 256] (RGB batch)           │  │
 │  │    - Supports dropout for variation (train mode)    │  │
@@ -92,17 +92,30 @@ The draw2pix web application is a real-time sketch-to-photo conversion system th
 │  │              Pix2Pix Model (PyTorch)                   │  │
 │  │                                                        │  │
 │  │  Components:                                          │  │
-│  │    - netG: U-Net Generator (unet_256)                │  │
+│  │    - netG: Generator (auto-detected from filename)  │  │
+│  │      Supported: unet_256, unet_128,                 │  │
+│  │                 resnet_9blocks, resnet_6blocks      │  │
 │  │    - Weights: *.pth files in pretrained_models/     │  │
 │  │    - Device: CUDA (if available) or CPU              │  │
 │  │    - init_type: normal (Gaussian initialization)     │  │
+│  │    - Detection: Filename prefix (U256_, R9_, etc.)  │  │
 │  │                                                        │  │
-│  │  Architecture:                                        │  │
+│  │  Architecture Examples:                              │  │
+│  │                                                        │  │
+│  │  U-Net 256:                                          │  │
 │  │    Input Layer: 1 channel (grayscale)                │  │
 │  │    Encoder: 8 Conv layers (downsample)               │  │
 │  │    Bottleneck: Dense representation                  │  │
 │  │    Decoder: 8 DeConv layers (upsample)               │  │
 │  │    Skip Connections: U-Net style concatenation       │  │
+│  │    Output Layer: 3 channels (RGB)                    │  │
+│  │    Activation: Tanh (output normalized to [-1,1])    │  │
+│  │                                                        │  │
+│  │  ResNet (9 blocks):                                  │  │
+│  │    Input Layer: 1 channel (grayscale)                │  │
+│  │    Downsampling: 2 Conv layers (stride 2)           │  │
+│  │    Residual Blocks: 9 ResNet blocks                  │  │
+│  │    Upsampling: 2 Transposed Conv layers (stride 2)  │  │
 │  │    Output Layer: 3 channels (RGB)                    │  │
 │  │    Activation: Tanh (output normalized to [-1,1])    │  │
 │  └───────────────────────────────────────────────────────┘  │
@@ -138,7 +151,7 @@ The draw2pix web application is a real-time sketch-to-photo conversion system th
    ↓
 7. Model inference:
    - Load current active model (from loaded_models dict)
-   - Forward pass through U-Net generator
+   - Forward pass through generator (U-Net or ResNet)
    - Output tensor [1, 3, 256, 256] in [-1, 1] range
    ↓
 8. Postprocessing pipeline:

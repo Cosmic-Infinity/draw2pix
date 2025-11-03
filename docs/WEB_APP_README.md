@@ -65,12 +65,27 @@ Navigate to: **http://127.0.0.1:5000**
 | `--model_dir`  | `pretrained_models`  | Directory containing .pth model files           |
 | `--input_nc`   | `1`                  | Number of input channels (1=grayscale, 3=RGB)   |
 | `--output_nc`  | `3`                  | Number of output channels (3=RGB photo)         |
+| `--netG`       | `None` (auto-detect) | Generator architecture (optional override)      |
 | `--port`       | `5000`               | Port to run the web server                      |
 | `--host`       | `127.0.0.1`          | Host address (use `0.0.0.0` for network access) |
 
+**Supported `--netG` architectures**: `unet_256`, `unet_128`, `resnet_9blocks`, `resnet_6blocks`
+
+**Architecture Auto-Detection**: By default, the app automatically detects each model's architecture from its filename prefix. You can override this by specifying `--netG`, which will apply to all models.
+
+**Filename Conventions:**
+- `U256_*.pth` → U-Net 256
+- `U128_*.pth` → U-Net 128
+- `R9_*.pth` → ResNet 9 blocks
+- `R6_*.pth` → ResNet 6 blocks
+
 Example:
 ```bash
-python app/web_app.py --model_dir pretrained_models --port 5000 --host 127.0.0.1
+# Auto-detect architecture from filenames (recommended)
+python app/web_app.py --model_dir pretrained_models
+
+# Force all models to use specific architecture
+python app/web_app.py --model_dir pretrained_models --netG resnet_9blocks
 ```
 
 ## How to Use
@@ -97,6 +112,24 @@ python app/web_app.py --model_dir pretrained_models --port 5000 --host 127.0.0.1
 - Use the **model dropdown** at the top to switch between loaded models
 - All models in the `pretrained_models/` directory are loaded at startup
 - The current model is displayed in the dropdown
+- Each model's architecture is automatically detected from its filename prefix
+- You can mix different architectures (U-Net and ResNet) in the same directory
+- **Naming convention**: Use `U256_`, `U128_`, `R9_`, or `R6_` prefix for auto-detection
+
+#### How Architecture Auto-Detection Works
+
+The app automatically detects the model architecture from the filename prefix:
+
+| Prefix | Architecture | Example Filename |
+|--------|-------------|------------------|
+| `U256_` | U-Net 256 | `U256_flowers_100e.pth` |
+| `U128_` | U-Net 128 | `U128_flowers_50e.pth` |
+| `R9_` | ResNet 9 blocks | `R9_flowers_200e.pth` |
+| `R6_` | ResNet 6 blocks | `R6_flowers_150e.pth` |
+
+**Note**: Prefixes are case-insensitive (`u256_`, `U256_`, `r9_`, `R9_` all work).
+
+If a filename doesn't match any prefix, the app defaults to `unet_256`. You can override this with the `--netG` command-line argument.
 
 ### Generation Settings Explained
 
@@ -124,7 +157,10 @@ Error initializing models: No .pth model files found in pretrained_models
 If specific models fail to load:
 - Check that the .pth files are not corrupted
 - Ensure sufficient disk space
-- Verify the model architecture matches (U-Net 256)
+- Verify the model filename follows the naming convention (e.g., `U256_*.pth`, `R9_*.pth`)
+- If auto-detection fails, it will default to `unet_256`
+- You can force a specific architecture with `--netG` if needed
+- Supported architectures: `unet_256`, `unet_128`, `resnet_9blocks`, `resnet_6blocks`
 
 ### CUDA Out of Memory
 
