@@ -1,5 +1,24 @@
 """
 Flask web application for real-time draw2pix conversion using pix2pix model.
+
+AUTO-DETECTED PARAMETERS (from model state_dict):
+✅ --netG (architecture): Detected from filename prefix (U256_, U128_, R9_, R6_)
+✅ --input_nc (input channels): Detected from model.1.weight shape [ngf, input_nc, k, k]
+✅ --output_nc (output channels): Detected from final conv layer shape
+✅ --norm (normalization): Detected from presence of num_batches_tracked
+    - 'batch' or 'sync_batch' → detected as 'batch' (same behavior for inference)
+    - 'instance' or 'sync_instance' → detected as 'instance' (same behavior for inference)
+✅ --no_dropout (dropout flag): Detected from ResNet conv_block max layer index
+✅ --ngf (generator filters): Detected from model.1.weight shape [ngf, input_nc, k, k]
+
+NOT TRACKED (training-only parameters, don't affect inference):
+❌ --lr, --beta1, --gan_mode, --lambda_L1, --n_epochs, --batch_size, etc.
+
+NOT TRACKED (discriminator parameters, not used in inference):
+❌ --ndf, --n_layers_D (discriminator not loaded during inference)
+
+NOT TRACKED (initialization parameters, overridden by loaded weights):
+❌ --init_type, --init_gain (weights loaded from file override initialization)
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -69,19 +88,21 @@ def detect_architecture_from_filename(filename):
 
 def detect_model_config_from_state_dict(model_path):
     """
-    Detect input/output channels, normalization type, and dropout setting from the model's state dictionary.
+    Detect input/output channels, normalization type, dropout setting, ngf, and ndf from the model's state dictionary.
     
     Returns:
-        dict: Configuration with 'input_nc', 'output_nc', 'norm', 'use_dropout' if detectable
+        dict: Configuration with 'input_nc', 'output_nc', 'norm', 'use_dropout', 'ngf', 'ndf' if detectable
     """
     try:
         state_dict = torch.load(model_path, map_location='cpu', weights_only=True)
         config = {}
         
-        # Detect input channels from first conv layer
-        # For ResNet: model.1.weight shape is [64, input_nc, 7, 7]
+        # Detect ngf (number of generator filters) from first conv layer
+        # For ResNet: model.1.weight shape is [ngf, input_nc, 7, 7]
+        # For UNet: model.1.weight shape is [ngf, input_nc, 4, 4]
         if 'model.1.weight' in state_dict:
             shape = state_dict['model.1.weight'].shape
+            config['ngf'] = shape[0]  # First dimension is ngf (number of filters)
             config['input_nc'] = shape[1]  # Second dimension is input channels
         
         # Detect output channels from last conv layer
@@ -94,42 +115,34 @@ def detect_model_config_from_state_dict(model_path):
                     break
         
         # Detect normalization type by checking for num_batches_tracked
-        # BatchNorm has num_batches_tracked, InstanceNorm does not
+        # BatchNorm/SyncBatchNorm has num_batches_tracked, InstanceNorm/SyncInstanceNorm does not
         has_batch_tracked = any('num_batches_tracked' in key for key in state_dict.keys())
         
         if has_batch_tracked:
             config['norm'] = 'batch'
-            print('Detected: Batch normalization (num_batches_tracked found)')
         else:
             config['norm'] = 'instance'
-            print('Detected: Instance normalization (no num_batches_tracked)')
         
-        # Detect dropout usage by checking the conv_block structure
-        # ResNet with dropout has layers at indices like: 0,1,2,3,4,5,6,7 (7 is dropout)
-        # ResNet without dropout has layers at: 0,1,2,3,4,5,6 (6 is the last layer)
-        # Check if any residual block has a layer at index 7
-        resblock_keys = [k for k in state_dict.keys() if 'conv_block.7' in k]
-        if resblock_keys:
-            config['use_dropout'] = True
-            print('Detected: Model trained WITH dropout')
-        else:
-            # Check if we have conv_block.6 which would be the last layer without dropout
-            resblock_keys_6 = [k for k in state_dict.keys() if 'conv_block.6' in k and 'weight' in k]
-            if resblock_keys_6:
-                # Check the shape - if it's a conv layer [256, 256, 3, 3], dropout was used
-                # If it's a batch norm weight [256], no dropout was used
-                sample_key = resblock_keys_6[0]
-                if len(state_dict[sample_key].shape) == 4:
-                    config['use_dropout'] = True
-                    print('Detected: Model trained WITH dropout')
-                else:
-                    config['use_dropout'] = False
-                    print('Detected: Model trained WITHOUT dropout (--no_dropout)')
+        # Detect dropout usage by checking the maximum layer index in residual blocks
+        max_conv_block_index = -1
+        for key in state_dict.keys():
+            if 'conv_block.' in key:
+                parts = key.split('.')
+                try:
+                    cb_idx = parts.index('conv_block')
+                    if cb_idx + 1 < len(parts):
+                        layer_idx = int(parts[cb_idx + 1])
+                        max_conv_block_index = max(max_conv_block_index, layer_idx)
+                except (ValueError, IndexError):
+                    continue
         
-        print(f'Detected config from state dict: {config}')
+        # Determine if dropout is used based on max index
+        if max_conv_block_index >= 0:
+            config['use_dropout'] = max_conv_block_index > 5
+        
         return config
     except Exception as e:
-        print(f'Warning: Could not detect config from state dict: {str(e)}')
+        print(f'⚠️  Warning: Could not detect config from state dict: {str(e)}')
         return {}
 
 
@@ -140,32 +153,38 @@ def load_single_model(model_path, input_nc=1, output_nc=3, netG=None):
     if not Path(model_path).exists():
         raise FileNotFoundError(f'Model file not found: {model_path}\nPlease ensure the model file exists in the specified location.')
     
+    model_filename = Path(model_path).name
+    
     # Auto-detect architecture if not specified
     if netG is None:
-        model_filename = Path(model_path).name
-        print(f'Auto-detecting architecture for {model_filename}...')
         netG = detect_architecture_from_filename(model_filename)
         if netG is None:
-            print('Warning: Could not auto-detect architecture from filename, using default: unet_256')
-            print('Expected filename format: U256_*.pth, U128_*.pth, R9_*.pth, or R6_*.pth')
+            print(f'⚠️  Could not auto-detect architecture from filename, using default: unet_256')
             netG = 'unet_256'
-        else:
-            print(f'Detected architecture: {netG}')
-    else:
-        print(f'Loading model with specified architecture: {netG}')
     
-    # Detect input/output channels and normalization from the model file itself
+    # Detect input/output channels, normalization, ngf from the model file itself
     model_config = detect_model_config_from_state_dict(model_path)
     if 'input_nc' in model_config:
         input_nc = model_config['input_nc']
-        print(f'Using detected input_nc: {input_nc}')
     if 'output_nc' in model_config:
         output_nc = model_config['output_nc']
-        print(f'Using detected output_nc: {output_nc}')
     
-    # Use detected normalization, defaulting to instance norm if not detected
+    # Use detected parameters with defaults
     norm = model_config.get('norm', 'instance')
-    use_dropout = model_config.get('use_dropout', True)  # Default to True for backward compatibility
+    use_dropout = model_config.get('use_dropout', True)
+    ngf = model_config.get('ngf', 64)
+    
+    # Print configuration summary
+    config_parts = [
+        f"arch={netG}",
+        f"in={input_nc}",
+        f"out={output_nc}",
+        f"norm={norm}",
+        f"ngf={ngf}" if ngf != 64 else None,
+        "no_dropout" if not use_dropout else "dropout"
+    ]
+    config_str = ", ".join(part for part in config_parts if part is not None)
+    print(f'   📋 Config: {config_str}')
     
     # Create a minimal options object
     parser = argparse.ArgumentParser()
@@ -173,25 +192,24 @@ def load_single_model(model_path, input_nc=1, output_nc=3, netG=None):
     
     # Set the required parameters
     args = [
-        '--dataroot', '.',  # dummy value
+        '--dataroot', '.',
         '--name', 'sketch2photo',
         '--model', 'pix2pix',
-        '--netG', netG,  # Use the detected/specified architecture
+        '--netG', netG,
         '--direction', 'AtoB',
         '--dataset_mode', 'single',
         '--norm', norm,
         '--input_nc', str(input_nc),
         '--output_nc', str(output_nc),
+        '--ngf', str(ngf),
         '--load_size', '256',
         '--crop_size', '256',
-        '--preprocess', 'none',  # No preprocessing for real-time
-        '--epoch', 'none',  # Don't load from checkpoints
+        '--preprocess', 'none',
+        '--epoch', 'none',
     ]
     
-    # Add dropout flag based on detection
     if not use_dropout:
         args.append('--no_dropout')
-        print('Using --no_dropout flag (model was trained without dropout)')
     
     model_opt = model_opt.parse_args(args)
     model_opt.num_threads = 0
@@ -202,25 +220,22 @@ def load_single_model(model_path, input_nc=1, output_nc=3, netG=None):
     model_opt.isTrain = False
     model_opt.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
-    # Create model (but don't call setup which tries to load from checkpoints)
+    # Create model
     model = Pix2PixModel(model_opt)
     
     # Initialize the network architecture manually
     from pix2pix.models import networks
     model.netG = networks.init_net(model.netG, model_opt.init_type, model_opt.init_gain)
     
-    # Load the trained weights directly
-    print(f'Loading model from {model_path}')
+    # Load the trained weights
     state_dict = torch.load(model_path, map_location=model_opt.device, weights_only=False)
     
-    # Handle different state dict formats
     if hasattr(state_dict, '_metadata'):
         del state_dict._metadata
     
     model.netG.load_state_dict(state_dict)
     model.netG.eval()
     
-    print(f'Model loaded successfully on device: {model_opt.device}')
     return model, model_opt
 
 
@@ -234,21 +249,24 @@ def initialize_all_models(model_dir='.', input_nc=1, output_nc=3, netG=None):
     if not model_files:
         raise FileNotFoundError(f'No .pth model files found in {model_dir}')
     
-    print(f'Found {len(model_files)} model(s): {", ".join(model_files)}')
-    print('Loading all models into memory...')
+    print(f'\n📦 Found {len(model_files)} model(s) in {model_dir}')
+    print('━' * 70)
     
     # Load all models - each will auto-detect its architecture if netG not specified
-    for model_file in model_files:
+    for idx, model_file in enumerate(model_files, 1):
         model_path = Path(model_dir) / model_file
+        print(f'\n[{idx}/{len(model_files)}] Loading: {model_file}')
         try:
             model, model_opt = load_single_model(str(model_path), input_nc, output_nc, netG)
             loaded_models[model_file] = {
                 'model': model,
                 'opt': model_opt
             }
-            print(f'✓ Loaded: {model_file}')
+            device_info = f"on {model_opt.device}"
+            print(f'   ✅ Success {device_info}')
         except Exception as e:
-            print(f'✗ Failed to load {model_file}: {str(e)}')
+            error_msg = str(e).split('\n')[0]  # First line only
+            print(f'   ❌ Failed: {error_msg}')
     
     if not loaded_models:
         raise RuntimeError('No models could be loaded successfully')
@@ -257,8 +275,11 @@ def initialize_all_models(model_dir='.', input_nc=1, output_nc=3, netG=None):
     current_model_name = list(loaded_models.keys())[0]
     opt = loaded_models[current_model_name]['opt']
     
-    print(f'\nAll models loaded! Current model: {current_model_name}')
-    print(f'Available models: {list(loaded_models.keys())}')
+    print('\n' + '━' * 70)
+    print(f'✅ Loaded {len(loaded_models)}/{len(model_files)} model(s) successfully')
+    print(f'⚡ Active model: {current_model_name}')
+    if len(loaded_models) > 1:
+        print(f'📋 Available: {", ".join(loaded_models.keys())}')
     return loaded_models
 
 
@@ -357,16 +378,15 @@ def index():
 def generate():
     """Generate photorealistic image from sketch."""
     try:
-        print("Received generation request")
         data = request.json
         sketch_data = data.get('sketch')
-        num_variations = data.get('num_variations', 1)  # Default to 1 for backward compatibility
-        use_dropout = data.get('use_dropout', False)  # Enable dropout for variations
-        use_perturbation = data.get('use_perturbation', False)  # Enable input perturbations
-        perturbation_strength = data.get('perturbation_strength', 'medium')  # low/medium/high
+        num_variations = data.get('num_variations', 1)
+        use_dropout = data.get('use_dropout', False)
+        use_perturbation = data.get('use_perturbation', False)
+        perturbation_strength = data.get('perturbation_strength', 'medium')
         
         if not sketch_data:
-            print("Error: No sketch data provided")
+            print("❌ No sketch data provided")
             return jsonify({'error': 'No sketch data provided'}), 400
         
         # Get current model
@@ -375,29 +395,23 @@ def generate():
         
         current_model = loaded_models[current_model_name]['model']
         current_opt = loaded_models[current_model_name]['opt']
-        
-        # Get the input_nc from the model options
         model_input_nc = current_opt.input_nc
         
-        print(f"Using model: {current_model_name}")
-        print(f"Model expects input_nc={model_input_nc}, output_nc={current_opt.output_nc}")
-        print(f"Generating {num_variations} variation(s)...")
-        print(f"Dropout: {use_dropout}, Perturbation: {use_perturbation} ({perturbation_strength})")
+        # Compact status line
+        mode_info = "dropout" if use_dropout else "no_dropout"
+        perturb_info = f"perturb({perturbation_strength})" if use_perturbation else "perturb(none)"
+        print(f"🎨 [{current_model_name}] {num_variations}x | {mode_info} | {perturb_info} | {model_input_nc}→{current_opt.output_nc}ch")
         
-        # Set model mode based on dropout flag
+        # Set model mode
         if use_dropout:
-            current_model.netG.train()  # Enable dropout
-            print("Model set to train mode (dropout enabled)")
+            current_model.netG.train()
         else:
-            current_model.netG.eval()  # Disable dropout
-            print("Model set to eval mode (dropout disabled)")
+            current_model.netG.eval()
         
         # Generate multiple variations with different preprocessing if requested
         if num_variations > 1:
             input_tensors = []
             for i in range(num_variations):
-                # First variation (index 0) is always clean/unperturbed
-                # Perturbation is only applied to variations 2, 3, 4... (indices 1, 2, 3...)
                 apply_perturb = use_perturbation and i > 0
                 tensor = preprocess_sketch(
                     sketch_data, 
@@ -417,14 +431,10 @@ def generate():
                 input_nc=model_input_nc
             ).to(current_opt.device)
         
-        print(f"Input batch shape: {input_batch.shape}")
-        print(f"Running model inference (batch size: {num_variations})...")
         # Generate images directly using the generator network
         with torch.no_grad():
             output_batch = current_model.netG(input_batch)
-        print(f"Output batch shape: {output_batch.shape}")
         
-        print("Postprocessing outputs...")
         # Postprocess and return all results
         if num_variations > 1:
             results = []
@@ -432,16 +442,17 @@ def generate():
                 output_base64 = postprocess_output(output_batch[i:i+1])
                 results.append(output_base64)
             
-            print(f"Generation successful! ({num_variations} variations)")
+            print(f"   ✅ Done ({num_variations} variations)")
             return jsonify({'results': results})
         else:
             output_base64 = postprocess_output(output_batch)
-            print("Generation successful!")
+            print(f"   ✅ Done")
             return jsonify({'result': output_base64})
     
     except Exception as e:
         import traceback
-        print(f'Error during generation: {str(e)}')
+        error_msg = str(e).split('\n')[0]
+        print(f'   ❌ Error: {error_msg}')
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -472,7 +483,7 @@ def select_model():
     current_model_name = model_name
     opt = loaded_models[current_model_name]['opt']
     
-    print(f'Switched to model: {current_model_name}')
+    print(f'🔄 Switched to: {current_model_name}')
     return jsonify({
         'success': True,
         'current': current_model_name
@@ -511,15 +522,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # Initialize all models
-    print('Initializing models...')
+    print('� Initializing draw2pix Web App...')
     try:
         initialize_all_models(args.model_dir, args.input_nc, args.output_nc, args.netG)
-        print('All models initialized successfully!')
     except Exception as e:
-        print(f'Error initializing models: {str(e)}')
-        print('Make sure you have .pth model files in the specified directory')
+        print(f'\n❌ Error: {str(e)}')
+        print('💡 Make sure you have .pth model files in the specified directory')
         exit(1)
     
     # Run the Flask app
-    print(f'Starting server on http://{args.host}:{args.port}')
+    print(f'\n🌐 Starting server at http://{args.host}:{args.port}')
+    print('Press Ctrl+C to stop\n')
     app.run(host=args.host, port=args.port, debug=True, use_reloader=False)
