@@ -63,21 +63,26 @@ Navigate to: **http://127.0.0.1:5000**
 | Argument       | Default              | Description                                     |
 | -------------- | -------------------- | ----------------------------------------------- |
 | `--model_dir`  | `pretrained_models`  | Directory containing .pth model files           |
-| `--input_nc`   | `1`                  | Number of input channels (1=grayscale, 3=RGB)   |
-| `--output_nc`  | `3`                  | Number of output channels (3=RGB photo)         |
+| `--input_nc`   | `None` (auto-detect) | Number of input channels (1=grayscale, 3=RGB). Leave unspecified to auto-detect from model. |
+| `--output_nc`  | `None` (auto-detect) | Number of output channels (typically 3=RGB). Leave unspecified to auto-detect from model.  |
 | `--netG`       | `None` (auto-detect) | Generator architecture (optional override)      |
 | `--port`       | `5000`               | Port to run the web server                      |
 | `--host`       | `127.0.0.1`          | Host address (use `0.0.0.0` for network access) |
 
 **Supported `--netG` architectures**: `unet_256`, `unet_128`, `resnet_9blocks`, `resnet_6blocks`
 
-**Architecture Auto-Detection**: By default, the app automatically detects each model's architecture from its filename prefix. You can override this by specifying `--netG`, which will apply to all models.
+**Auto-Detection Features**: 
+- **Architecture Detection**: Automatically detects each model's architecture from its filename prefix
+- **Channel Detection**: Automatically detects `input_nc` and `output_nc` from the model's state dictionary
+- You can override any auto-detected value by explicitly specifying it as a command-line argument
 
 **Filename Conventions:**
 - `U256_*.pth` → U-Net 256
 - `U128_*.pth` → U-Net 128
 - `R9_*.pth` → ResNet 9 blocks
 - `R6_*.pth` → ResNet 6 blocks
+
+> **Note**: The web app now automatically detects model configuration (input/output channels, architecture, normalization) from the model files themselves. This ensures compatibility with models trained using different settings without requiring manual specification.
 
 Example:
 ```bash

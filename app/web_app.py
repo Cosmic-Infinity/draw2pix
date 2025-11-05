@@ -97,22 +97,67 @@ def detect_model_config_from_state_dict(model_path):
         state_dict = torch.load(model_path, map_location='cpu', weights_only=True)
         config = {}
         
-        # Detect ngf (number of generator filters) from first conv layer
-        # For ResNet: model.1.weight shape is [ngf, input_nc, 7, 7]
-        # For UNet: model.1.weight shape is [ngf, input_nc, 4, 4]
-        if 'model.1.weight' in state_dict:
-            shape = state_dict['model.1.weight'].shape
-            config['ngf'] = shape[0]  # First dimension is ngf (number of filters)
-            config['input_nc'] = shape[1]  # Second dimension is input channels
+        # Detect input_nc and ngf from first conv layer
+        # Try multiple possible keys for different architectures:
+        # - ResNet: model.1.weight shape is [ngf, input_nc, 7, 7]
+        # - UNet: model.model.0.weight shape is [inner_nc, input_nc, 4, 4] (outermost downconv)
+        # Some models might have additional prefixes like 'module.' for DataParallel
+        first_conv_keys = [
+            'model.model.0.weight',  # UNet
+            'model.1.weight',         # ResNet
+            'module.model.model.0.weight',  # UNet with DataParallel
+            'module.model.1.weight',        # ResNet with DataParallel
+        ]
         
-        # Detect output channels from last conv layer
-        # Look for the final conv layer (usually has 'Tanh' after it)
-        for key in reversed(list(state_dict.keys())):
-            if 'weight' in key and len(state_dict[key].shape) == 4:
-                shape = state_dict[key].shape
-                if shape[0] == 3 or shape[0] == 1:  # Likely output layer
-                    config['output_nc'] = shape[0]
+        first_conv_key = None
+        for key in first_conv_keys:
+            if key in state_dict:
+                first_conv_key = key
+                break
+        
+        # If still not found, search for any key that looks like a first conv
+        if first_conv_key is None:
+            for key in state_dict.keys():
+                if 'weight' in key and state_dict[key].dim() == 4:
+                    # Found a conv layer, likely the first one
+                    first_conv_key = key
                     break
+        
+        if first_conv_key:
+            shape = state_dict[first_conv_key].shape
+            config['input_nc'] = shape[1]  # Second dimension is input channels
+            # For UNet, ngf is typically half of inner_nc (first layer), but we can infer from later layers
+            # For ResNet, shape[0] is ngf directly
+            if 'model.1.weight' in state_dict or 'module.model.1.weight' in state_dict:
+                config['ngf'] = shape[0]
+        
+        # Detect output channels from last conv/transpose conv layer
+        # For UNet: model.model.X.weight where X is the outermost upconv (ConvTranspose2d)
+        # For ResNet: last conv layer before Tanh
+        output_nc_key = None
+        
+        # Try to find the output layer more intelligently
+        # UNet: Look for upconv in outermost layer (near beginning of state dict after downconv)
+        # The outermost upconv is typically model.model.2.weight (after downconv at 0, submodule at 1)
+        if 'model.model.2.weight' in state_dict:
+            shape = state_dict['model.model.2.weight'].shape
+            if shape[1] == 3 or shape[1] == 1:  # ConvTranspose2d: output is dim 1
+                config['output_nc'] = shape[1]
+                output_nc_key = 'model.model.2.weight'
+        
+        # Fallback: search from the end for likely output layer
+        if 'output_nc' not in config:
+            for key in reversed(list(state_dict.keys())):
+                if 'weight' in key and len(state_dict[key].shape) == 4:
+                    shape = state_dict[key].shape
+                    # For Conv2d: output channels are dim 0
+                    # For ConvTranspose2d: output channels are dim 1
+                    if shape[0] == 3 or shape[0] == 1:
+                        config['output_nc'] = shape[0]
+                        break
+                    elif shape[1] == 3 or shape[1] == 1:
+                        config['output_nc'] = shape[1]
+                        break
         
         # Detect normalization type by checking for num_batches_tracked
         # BatchNorm/SyncBatchNorm has num_batches_tracked, InstanceNorm/SyncInstanceNorm does not
@@ -143,11 +188,21 @@ def detect_model_config_from_state_dict(model_path):
         return config
     except Exception as e:
         print(f'⚠️  Warning: Could not detect config from state dict: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return {}
         return {}
 
 
-def load_single_model(model_path, input_nc=1, output_nc=3, netG=None):
-    """Load a single pix2pix model with the trained weights."""
+def load_single_model(model_path, input_nc=None, output_nc=None, netG=None):
+    """Load a single pix2pix model with the trained weights.
+    
+    Args:
+        model_path: Path to the .pth model file
+        input_nc: Number of input channels (None=auto-detect, 1=grayscale, 3=RGB)
+        output_nc: Number of output channels (None=auto-detect, typically 3=RGB)
+        netG: Generator architecture (None=auto-detect from filename)
+    """
     
     # Verify model file exists first
     if not Path(model_path).exists():
@@ -164,10 +219,21 @@ def load_single_model(model_path, input_nc=1, output_nc=3, netG=None):
     
     # Detect input/output channels, normalization, ngf from the model file itself
     model_config = detect_model_config_from_state_dict(model_path)
-    if 'input_nc' in model_config:
+    
+    # Use auto-detected values if not explicitly specified
+    if input_nc is None and 'input_nc' in model_config:
         input_nc = model_config['input_nc']
-    if 'output_nc' in model_config:
+        print(f'   🔍 Auto-detected input_nc={input_nc}')
+    elif input_nc is None:
+        input_nc = 1  # Fallback default for sketch-to-photo
+        print(f'   ⚠️  Could not detect input_nc, using default: {input_nc}')
+    
+    if output_nc is None and 'output_nc' in model_config:
         output_nc = model_config['output_nc']
+        print(f'   🔍 Auto-detected output_nc={output_nc}')
+    elif output_nc is None:
+        output_nc = 3  # Fallback default for RGB output
+        print(f'   ⚠️  Could not detect output_nc, using default: {output_nc}')
     
     # Use detected parameters with defaults
     norm = model_config.get('norm', 'instance')
@@ -239,8 +305,15 @@ def load_single_model(model_path, input_nc=1, output_nc=3, netG=None):
     return model, model_opt
 
 
-def initialize_all_models(model_dir='.', input_nc=1, output_nc=3, netG=None):
-    """Initialize all pix2pix models found in the directory."""
+def initialize_all_models(model_dir='.', input_nc=None, output_nc=None, netG=None):
+    """Initialize all pix2pix models found in the directory.
+    
+    Args:
+        model_dir: Directory containing .pth model files
+        input_nc: Number of input channels (None=auto-detect per model)
+        output_nc: Number of output channels (None=auto-detect per model)
+        netG: Generator architecture (None=auto-detect per model)
+    """
     global loaded_models, current_model_name, opt
     
     # Find all .pth files
@@ -508,10 +581,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='draw2pix Web App')
     parser.add_argument('--model_dir', type=str, default='pretrained_models',
                         help='Directory containing .pth model files (default: pretrained_models)')
-    parser.add_argument('--input_nc', type=int, default=1,
-                        help='Number of input channels (1 for grayscale sketch, 3 for RGB)')
-    parser.add_argument('--output_nc', type=int, default=3,
-                        help='Number of output channels (3 for RGB photo)')
+    parser.add_argument('--input_nc', type=int, default=None,
+                        help='Number of input channels (None=auto-detect, 1=grayscale, 3=RGB). Leave unspecified to auto-detect from model.')
+    parser.add_argument('--output_nc', type=int, default=None,
+                        help='Number of output channels (None=auto-detect, typically 3=RGB). Leave unspecified to auto-detect from model.')
     parser.add_argument('--netG', type=str, default=None,
                         help='Generator architecture: unet_256, unet_128, resnet_9blocks, resnet_6blocks. If not specified, will auto-detect from model file.')
     parser.add_argument('--port', type=int, default=5000,
