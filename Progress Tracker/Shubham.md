@@ -243,6 +243,8 @@ G_GAN: statrted noisily at 2.5, then noisily exploded and grew to around 17.5
 D_real: started noisliy at .1, decayed relatively quick to almost 0, stayed there as the noise slowly decayed. 
 D_fake: started noisliy at .1, decayed relatively quick to almost 0, stayed there as the noise slowly decayed. 
 
+![train15](train_graphs/image15.png)
+
 --------------------------------------------
 
 ```
