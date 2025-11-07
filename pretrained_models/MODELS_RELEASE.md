@@ -5,54 +5,50 @@ To avoid costs associated with Git LFS, the pretrained models are distributed vi
 ## Download Instructions
 
 ### Windows Users
-Simply launch the app using `start.bat`, which will automatically prompt you to download the models if they're not already present. *Alternatively*, you may also do the download+extraction manually as explained below.
+Simply launch the app using `start.bat`, which will automatically prompt you to download the models if they're not already present. The script will:
+- Detect and download single or split archive files (if the release is split due to GitHub size limits)
+- Show progress indicators during download and extraction
+- Automatically handle version updates
+
+*Alternatively*, you may also do the download+extraction manually as explained below.
 
 ### Mac/Linux Users
-1. Download the latest [pretrained_models.zip](https://github.com/Cosmic-Infinity/draw2pix/releases/latest/) from the releases page
-2. Extract the contents directly into the `draw2pix/pretrained_models/` directory in your project
+1. Download the latest release files from the [releases page](https://github.com/Cosmic-Infinity/draw2pix/releases/latest/)
+   - If the release contains a single `pretrained_models.zip`, download that file
+   - If the release is split (due to GitHub size limits), download all parts: `pretrained_models_1.zip`, `pretrained_models_2.zip`, etc.
+2. Extract all downloaded zip files directly into the `draw2pix/pretrained_models/` directory in your project
+3. All parts will extract to the same location and combine into the complete model set
 
 ## File Structure
 
-The release zip file contains:
+The release archive(s) contain:
 ```
-pretrained_models.zip
-  ├── G_100e_cleanT_L65_Lr25.pth
-  ├── G_250e_cleanT_L50_Lr10.pth
-  ├── G_250e_cleanT_L85_Lr22.pth
-  ├── G_300e_dirtyT_L100_Lr20.pth
-  └── version.txt
+pretrained_models.zip (or pretrained_models_1.zip, pretrained_models_2.zip, etc.)
+  ├── *.pth                  # Multiple pretrained model files
+  └── version.txt            # Release version tracking
 ```
 
-**⚠️ Important**: Extract the `.pth` model files and `version.txt` directly into the `pretrained_models/` directory, **not** into a subdirectory.
+**⚠️ Important**: Extract the `.pth` model files and `version.txt` directly into the `pretrained_models/` directory, **not** into a subdirectory. If using split archives, extract all parts to the same location.
 
 ## Model Architectures
 
-The current release models use **U-Net 256** architecture. The web application automatically detects the architecture of each model from its filename prefix, so you can mix different architectures in the same directory.
+The web application automatically detects the architecture of each model from its filename prefix, allowing you to mix different architectures in the same directory. Models without a recognized prefix will default to **U-Net 256** architecture.
 
-### Current Release Models
+### Filename Naming Convention
 
-The models in this release (v1.x) follow the legacy naming convention and will default to **U-Net 256** architecture:
-```
-G_100e_cleanT_L65_Lr25.pth
-G_250e_cleanT_L50_Lr10.pth
-G_250e_cleanT_L85_Lr22.pth
-G_300e_dirtyT_L100_Lr20.pth
-```
-
-These models will work correctly as they use the U-Net 256 architecture (the default when no prefix is detected).
-
-### Filename Naming Convention (For Custom Models)
-
-To enable automatic architecture detection for your own trained models, follow this naming convention:
+Model filenames use prefixes to indicate their architecture. The application automatically detects these prefixes:
 
 | Prefix | Architecture | Example |
 |--------|-------------|---------|
-| `U256_` | U-Net 256 | `U256_flowers_100e.pth` |
-| `U128_` | U-Net 128 | `U128_flowers_50e.pth` |
-| `R9_` | ResNet 9 blocks | `R9_flowers_200e.pth` |
-| `R6_` | ResNet 6 blocks | `R6_flowers_150e.pth` |
+| `U256_` | U-Net 256 | `U256_Flower_1.pth` |
+| `U128_` | U-Net 128 | `U128_Flower_1.pth` |
+| `R9_` | ResNet 9 blocks | `R9_Flower_13.pth` |
+| `R6_` | ResNet 6 blocks | `R6_Flower_1.pth` |
 
-**Note**: Prefixes are case-insensitive.
+**Note**: 
+- Prefixes are case-insensitive
+- Models without a recognized prefix default to U-Net 256 architecture
+- See [docs/MODEL_REFERENCE.md](../docs/MODEL_REFERENCE.md) for complete details on all available models
 
 ### Usage
 
@@ -69,3 +65,12 @@ python app/web_app.py --model_dir pretrained_models --netG resnet_9blocks
 ## Versioning & Auto-Update
 
 Each release is tracked with a version number stored in `version.txt`. The auto-update feature (Windows only, via `start.bat`) checks your current version against the latest release and prompts you to update if a newer version is available.
+
+### How It Works
+- The script compares your local `version.txt` with the latest GitHub release tag
+- If an update is available, it offers to download and install it automatically
+- Your existing models are backed up before updating (with option to delete backup after successful update)
+- Supports both single archive and split archive downloads seamlessly
+
+### Manual Version Check
+To check which version you have installed, look at the contents of `pretrained_models/version.txt`.

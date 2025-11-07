@@ -13,6 +13,7 @@ set REPO_NAME=draw2pix
 set MODELS_DIR=pretrained_models
 set VERSION_FILE=%MODELS_DIR%\version.txt
 set GITHUB_RELEASES_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest/download/pretrained_models.zip
+set MAX_ZIP_PARTS=10
 
 REM Check if Flask is installed
 python -c "import flask" 2>NUL
@@ -264,21 +265,86 @@ if not "!OLD_VERSION!"=="" (
     echo.
 )
 
-REM Download the zip file
-echo Downloading models from GitHub releases...
+REM Try downloading split zip files (for releases split due to GitHub size limits)
+echo Checking for model archives...
 if not "!LATEST_VERSION!"=="unknown" (
     echo Target version: !LATEST_VERSION!
 )
-echo URL: !RELEASE_URL!
 echo.
 
-set TEMP_ZIP=%TEMP%\pretrained_models.zip
+set ZIP_COUNT=0
+set DOWNLOAD_SUCCESS=0
 
-powershell -Command "& {try { Write-Host 'Downloading...'; Invoke-WebRequest -Uri '%RELEASE_URL%' -OutFile '%TEMP_ZIP%' -UseBasicParsing; exit 0 } catch { Write-Host 'Download failed:' $_.Exception.Message; exit 1 }}"
+REM First, try the single zip file (backward compatibility)
+set SINGLE_ZIP_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/download/!LATEST_VERSION!/pretrained_models.zip
+if "!LATEST_VERSION!"=="unknown" (
+    set SINGLE_ZIP_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest/download/pretrained_models.zip
+)
+
+echo Checking for single archive: pretrained_models.zip
+powershell -Command "& {try { $response = Invoke-WebRequest -Uri '%SINGLE_ZIP_URL%' -Method Head -UseBasicParsing -ErrorAction Stop; exit 0 } catch { exit 1 }}" >NUL 2>&1
+
+if not errorlevel 1 (
+    echo Found: pretrained_models.zip
+    echo.
+    echo Downloading models from GitHub releases...
+    echo.
+    
+    set TEMP_ZIP=%TEMP%\pretrained_models.zip
+    
+    powershell -Command "& {try { Write-Host 'Downloading...'; Invoke-WebRequest -Uri '%SINGLE_ZIP_URL%' -OutFile '%TEMP_ZIP%' -UseBasicParsing; exit 0 } catch { Write-Host 'Download failed:' $_.Exception.Message; exit 1 }}"
+    
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to download models.
+        
+        REM Restore backup if it exists
+        if not "!OLD_VERSION!"=="" (
+            echo Restoring backup...
+            xcopy "!BACKUP_DIR!\*" "%MODELS_DIR%\" /E /I /Q /H /Y >NUL 2>&1
+            rmdir /s /q "!BACKUP_DIR!" >NUL 2>&1
+            echo Backup restored.
+        )
+        
+        echo Please check your internet connection and ensure the release exists.
+        echo Manual download URL: https://github.com/%REPO_OWNER%/%REPO_NAME%/releases
+        exit /b 1
+    )
+    
+    echo Download complete!
+    echo.
+    set DOWNLOAD_SUCCESS=1
+    goto :ExtractModels
+)
+
+REM If single zip not found, try split archives
+echo Single archive not found. Checking for split archives...
+echo.
+
+REM Detect how many parts exist
+set /a PART_NUM=1
+:DetectParts
+if !PART_NUM! GTR %MAX_ZIP_PARTS% goto :StartDownload
+
+set PART_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/download/!LATEST_VERSION!/pretrained_models_!PART_NUM!.zip
+if "!LATEST_VERSION!"=="unknown" (
+    set PART_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest/download/pretrained_models_!PART_NUM!.zip
+)
+
+powershell -Command "& {try { $response = Invoke-WebRequest -Uri '%PART_URL%' -Method Head -UseBasicParsing -ErrorAction Stop; exit 0 } catch { exit 1 }}" >NUL 2>&1
 
 if errorlevel 1 (
+    set /a ZIP_COUNT=!PART_NUM!-1
+    goto :StartDownload
+)
+
+set /a PART_NUM+=1
+goto :DetectParts
+
+:StartDownload
+if %ZIP_COUNT%==0 (
     echo.
-    echo ERROR: Failed to download models.
+    echo ERROR: No model archives found.
     
     REM Restore backup if it exists
     if not "!OLD_VERSION!"=="" (
@@ -288,49 +354,173 @@ if errorlevel 1 (
         echo Backup restored.
     )
     
-    echo Please check your internet connection and ensure the release exists.
+    echo Please check that the release exists.
     echo Manual download URL: https://github.com/%REPO_OWNER%/%REPO_NAME%/releases
     exit /b 1
 )
 
-echo Download complete!
+echo Found %ZIP_COUNT% split archive(s): pretrained_models_1.zip to pretrained_models_%ZIP_COUNT%.zip
+echo.
+echo Downloading %ZIP_COUNT% part(s)...
 echo.
 
-REM Extract the zip file directly to pretrained_models root
-echo Extracting models to pretrained_models directory...
+REM Download each part
+set /a CURRENT_PART=1
+:DownloadLoop
+if !CURRENT_PART! GTR %ZIP_COUNT% goto :AllDownloaded
+
+set PART_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/download/!LATEST_VERSION!/pretrained_models_!CURRENT_PART!.zip
+if "!LATEST_VERSION!"=="unknown" (
+    set PART_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/latest/download/pretrained_models_!CURRENT_PART!.zip
+)
+
+set TEMP_ZIP=%TEMP%\pretrained_models_!CURRENT_PART!.zip
+
+echo [Part !CURRENT_PART!/%ZIP_COUNT%] Downloading pretrained_models_!CURRENT_PART!.zip...
+
+powershell -Command "& {try { Invoke-WebRequest -Uri '%PART_URL%' -OutFile '%TEMP_ZIP%' -UseBasicParsing; exit 0 } catch { Write-Host 'Download failed:' $_.Exception.Message; exit 1 }}"
+
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to download part !CURRENT_PART!.
+    
+    REM Clean up any downloaded parts
+    set /a CLEANUP_PART=1
+    :CleanupLoop
+    if !CLEANUP_PART! GEQ !CURRENT_PART! goto :CleanupDone
+    del /f /q "%TEMP%\pretrained_models_!CLEANUP_PART!.zip" >NUL 2>&1
+    set /a CLEANUP_PART+=1
+    goto :CleanupLoop
+    
+    :CleanupDone
+    REM Restore backup if it exists
+    if not "!OLD_VERSION!"=="" (
+        echo Restoring backup...
+        xcopy "!BACKUP_DIR!\*" "%MODELS_DIR%\" /E /I /Q /H /Y >NUL 2>&1
+        rmdir /s /q "!BACKUP_DIR!" >NUL 2>&1
+        echo Backup restored.
+    )
+    
+    echo Please check your internet connection.
+    echo Manual download URL: https://github.com/%REPO_OWNER%/%REPO_NAME%/releases
+    exit /b 1
+)
+
+echo [Part !CURRENT_PART!/%ZIP_COUNT%] Download complete!
+echo.
+
+set /a CURRENT_PART+=1
+goto :DownloadLoop
+
+:AllDownloaded
+echo All parts downloaded successfully!
+echo.
+set DOWNLOAD_SUCCESS=1
+
+:ExtractModels
+
+REM Extract all downloaded zip files
+if %ZIP_COUNT% GTR 0 (
+    echo Extracting %ZIP_COUNT% archive part(s)...
+    echo.
+) else (
+    echo Extracting models...
+    echo.
+)
+
 set TEMP_EXTRACT=%TEMP%\pretrained_models_extract
 
 REM Clean up temp extract directory if it exists
 if exist "%TEMP_EXTRACT%" rmdir /s /q "%TEMP_EXTRACT%"
 mkdir "%TEMP_EXTRACT%"
 
-powershell -Command "& {try { Write-Host 'Extracting...'; Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%TEMP_EXTRACT%' -Force; exit 0 } catch { Write-Host 'Extraction failed:' $_.Exception.Message; exit 1 }}"
-
-if errorlevel 1 (
-    echo.
-    echo ERROR: Failed to extract models.
-    del /f /q "%TEMP_ZIP%" >NUL 2>&1
+if %ZIP_COUNT% GTR 0 (
+    REM Extract split archives
+    set /a EXTRACT_PART=1
+    :ExtractLoop
+    if !EXTRACT_PART! GTR %ZIP_COUNT% goto :ExtractionDone
     
-    REM Restore backup if it exists
-    if not "!OLD_VERSION!"=="" (
-        echo Restoring backup...
-        xcopy "!BACKUP_DIR!\*" "%MODELS_DIR%\" /E /I /Q /H /Y >NUL 2>&1
-        rmdir /s /q "!BACKUP_DIR!" >NUL 2>&1
-        echo Backup restored.
+    set TEMP_ZIP=%TEMP%\pretrained_models_!EXTRACT_PART!.zip
+    
+    echo [Part !EXTRACT_PART!/%ZIP_COUNT%] Extracting pretrained_models_!EXTRACT_PART!.zip...
+    
+    powershell -Command "& {try { Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%TEMP_EXTRACT%' -Force; exit 0 } catch { Write-Host 'Extraction failed:' $_.Exception.Message; exit 1 }}"
+    
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to extract part !EXTRACT_PART!.
+        
+        REM Clean up downloaded parts
+        set /a CLEANUP_PART=1
+        :CleanupExtractLoop
+        if !CLEANUP_PART! GTR %ZIP_COUNT% goto :CleanupExtractDone
+        del /f /q "%TEMP%\pretrained_models_!CLEANUP_PART!.zip" >NUL 2>&1
+        set /a CLEANUP_PART+=1
+        goto :CleanupExtractLoop
+        
+        :CleanupExtractDone
+        rmdir /s /q "%TEMP_EXTRACT%" >NUL 2>&1
+        
+        REM Restore backup if it exists
+        if not "!OLD_VERSION!"=="" (
+            echo Restoring backup...
+            xcopy "!BACKUP_DIR!\*" "%MODELS_DIR%\" /E /I /Q /H /Y >NUL 2>&1
+            rmdir /s /q "!BACKUP_DIR!" >NUL 2>&1
+            echo Backup restored.
+        )
+        
+        exit /b 1
     )
     
-    exit /b 1
+    echo [Part !EXTRACT_PART!/%ZIP_COUNT%] Extraction complete!
+    echo.
+    
+    set /a EXTRACT_PART+=1
+    goto :ExtractLoop
+) else (
+    REM Extract single archive
+    set TEMP_ZIP=%TEMP%\pretrained_models.zip
+    
+    powershell -Command "& {try { Write-Host 'Extracting...'; Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%TEMP_EXTRACT%' -Force; exit 0 } catch { Write-Host 'Extraction failed:' $_.Exception.Message; exit 1 }}"
+    
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to extract models.
+        del /f /q "%TEMP_ZIP%" >NUL 2>&1
+        
+        REM Restore backup if it exists
+        if not "!OLD_VERSION!"=="" (
+            echo Restoring backup...
+            xcopy "!BACKUP_DIR!\*" "%MODELS_DIR%\" /E /I /Q /H /Y >NUL 2>&1
+            rmdir /s /q "!BACKUP_DIR!" >NUL 2>&1
+            echo Backup restored.
+        )
+        
+        exit /b 1
+    )
+    
+    echo Extraction complete!
+    echo.
 )
 
-echo Extraction complete!
-echo.
-
+:ExtractionDone
 REM Move extracted files to pretrained_models directory root
 echo Moving files to pretrained_models directory...
 xcopy "%TEMP_EXTRACT%\*" "%MODELS_DIR%\" /E /I /Q /H /Y >NUL 2>&1
 
 REM Clean up temp files
-del /f /q "%TEMP_ZIP%" >NUL 2>&1
+if %ZIP_COUNT% GTR 0 (
+    set /a CLEANUP_PART=1
+    :FinalCleanupLoop
+    if !CLEANUP_PART! GTR %ZIP_COUNT% goto :FinalCleanupDone
+    del /f /q "%TEMP%\pretrained_models_!CLEANUP_PART!.zip" >NUL 2>&1
+    set /a CLEANUP_PART+=1
+    goto :FinalCleanupLoop
+    :FinalCleanupDone
+) else (
+    del /f /q "%TEMP%\pretrained_models.zip" >NUL 2>&1
+)
+
 rmdir /s /q "%TEMP_EXTRACT%" >NUL 2>&1
 
 echo Files moved successfully!
