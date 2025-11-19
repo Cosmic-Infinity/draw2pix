@@ -13,9 +13,8 @@ Transform rough sketches of flowers into photorealistic images through an intera
 ## ✨ Features
 
 - 🖌️ **Interactive Drawing Canvas** - Draw sketches directly in your browser
-- ⚡ **Real-time Inference** - See results instantly (GPU: ~100ms, CPU: ~1-2s)
-- 🎨 **Multiple Variations** - Generate up to 4 different outputs from one sketch
-- 🔧 **Adjustable Perturbations** - Control output diversity with strength settings
+- ⚡ **Near real-time Inference** - See results instantly (GPU: ~100ms, CPU: ~1-2s)
+- 🎨 **Multiple Variations** - Generate up to 4 different outputs from one sketch with diversity and noise strength settings
 - 🔄 **Model Switching** - Load and switch between multiple trained models at runtime
 - 📥 **Auto-Updates** - Automatically downloads pretrained models from GitHub releases
 - 🔍 **Auto-Detection** - Intelligently reads model parameters from binaries
@@ -58,8 +57,6 @@ Transform rough sketches of flowers into photorealistic images through an intera
 ---
 
 ## 📸 Screenshots
-
-### Application Interface
 
 <div align="center">
 
@@ -152,7 +149,7 @@ draw2pix/
 │   └── RELEASE_GUIDE.md        # Release creation guide
 ├── Progress Tracker/           # Training logs and progress
 │   ├── Shubham.md              # Model training tracker
-│   ├── Sourajit.md             # Web app development tracker
+│   ├── Sourajit.md             # Frontend development tracker
 │   └── train_graphs/           # Training visualization graphs
 ├── flowers Dataset/            # Custom curated dataset (9.5k images)
 ├── screenshots/                # Application screenshots & samples
@@ -292,11 +289,9 @@ This is an academic project. For questions or suggestions:
 
 - [ ] Expand dataset with more diverse flower colors and species
 - [ ] Experiment with higher resolution models (512×512) and upscaling techniques
-
 - [ ] Test alternative loss functions (Wasserstein GAN, Hinge loss)
 - [ ] Add progressive rendering? for better UX on slower hardware
 - [ ] Implement model quantization for faster CPU inference
-
 - [ ] Mobile-responsive UI for tablet/phone drawing
 
 ---
