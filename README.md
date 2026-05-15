@@ -10,7 +10,7 @@ Transform rough sketches of flowers into photorealistic images through an intera
 
 ---
 
-## ✨ Features
+## Features
 
 - 🖌️ **Interactive Drawing Canvas** - Draw sketches directly in your browser
 - ⚡ **Near real-time Inference** - See results instantly (GPU: ~100ms, CPU: ~1-2s)
@@ -21,7 +21,7 @@ Transform rough sketches of flowers into photorealistic images through an intera
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -56,7 +56,7 @@ Transform rough sketches of flowers into photorealistic images through an intera
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 <div align="center">
 
@@ -96,7 +96,7 @@ Transform rough sketches of flowers into photorealistic images through an intera
 
 ---
 
-## 🎯 Usage
+## Usage
 
 ### Web Interface
 
@@ -122,7 +122,7 @@ Options:
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 draw2pix/
@@ -161,7 +161,7 @@ draw2pix/
 
 ---
 
-## 🔬 Model Details
+## Model Details
 
 ### Architecture
 - **Base**: pix2pix (Conditional GAN)
@@ -195,11 +195,11 @@ All models are automatically downloaded via `start.bat` or available from [GitHu
 
 **\* = Training stopped early**
 
-📘 **For detailed training commands and loss curves, see [docs/MODEL_REFERENCE.md](docs/MODEL_REFERENCE.md)**
+ **For detailed training commands and loss curves, see [docs/MODEL_REFERENCE.md](docs/MODEL_REFERENCE.md)**
 
 ---
 
-## 🛠️ Technical Stack
+## Technical Stack
 
 ### Backend
 - **Flask** - Web framework
@@ -220,7 +220,7 @@ All models are automatically downloaded via `start.bat` or available from [GitHu
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 - **[docs/WEB_APP_README.md](docs/WEB_APP_README.md)** - Detailed web application usage guide
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and data flow
@@ -230,7 +230,7 @@ All models are automatically downloaded via `start.bat` or available from [GitHu
 
 ---
 
-## 🎓 Training Details
+## Training Details
 
 The models were trained on a custom dataset of flower images with the following characteristics:
 
@@ -252,11 +252,11 @@ Training GANs proved inherently complex due to adversarial dynamics. Key observa
 - **Color Bias**: Dataset overrepresentation of yellow/white flowers
 
 
-📊 **For complete training details and analysis, see [docs/MODEL_REFERENCE.md](docs/MODEL_REFERENCE.md) and [Progress Tracker/Shubham.md](Progress%20Tracker/Shubham.md)**
+ **For complete training details and analysis, see [docs/MODEL_REFERENCE.md](docs/MODEL_REFERENCE.md) and [Progress Tracker/Shubham.md](Progress%20Tracker/Shubham.md)**
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 This is an academic project. For questions or suggestions:
 
@@ -266,7 +266,7 @@ This is an academic project. For questions or suggestions:
 
 ---
 
-## 📝 License
+## License
 
 - **Custom Code** (app/, docs/, etc.): [MIT License](LICENSE)
 - **pix2pix Framework**: BSD License - See [pix2pix/THIRD_PARTY_LICENSES.txt](pix2pix/THIRD_PARTY_LICENSES.txt)
@@ -275,7 +275,7 @@ This is an academic project. For questions or suggestions:
 ---
 
 
-## ⚠️ Known Limitations
+## Known Limitations
 
 - Output quality varies based on sketch complexity.
 - Some models may show bias towards yellow/white flowers. Probable overfitting.
@@ -285,7 +285,7 @@ This is an academic project. For questions or suggestions:
 
 ---
 
-## 🔮 Future Improvements?
+## Future Improvements?
 
 - [ ] Expand dataset with more diverse flower colors and species
 - [ ] Experiment with higher resolution models (512×512) and upscaling techniques
@@ -296,7 +296,7 @@ This is an academic project. For questions or suggestions:
 
 ---
 
-## 👥 Team
+## Team
 
 <div align="center">
 
